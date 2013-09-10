@@ -12,10 +12,7 @@ class mobile_room(models.Model):
     room_status   = models.IntegerField(blank = False, null = True, verbose_name = u"room_status") # normal, on_dispatching, on_deleting, on_balance
     num_dispatching= models.IntegerField(blank = False, null = True,  verbose_name = u"num_dispatching") 
     num_deleting  = models.IntegerField(blank = False, null = True,  verbose_name = u"num_deleting")    
-    operation_time= models.DateTimeField(auto_now_add=True, verbose_name = u"operation_time")
-    
-    def __unicode__(self):
-        return self.room_name
+    operation_time= models.DateTimeField(auto_now_add=True, verbose_name = u"operation_time")    
     
     def todict(self):
         dic = {}
@@ -43,10 +40,7 @@ class pc_room(models.Model):
     room_status   = models.IntegerField(blank = False, null = True, verbose_name = u"room_status") # normal, on_dispatching, on_deleting, on_balance
     num_dispatching= models.IntegerField(blank = False, null = True,  verbose_name = u"num_dispatching") 
     num_deleting  = models.IntegerField(blank = False, null = True,  verbose_name = u"num_deleting")    
-    operation_time= models.DateTimeField(auto_now_add=True, verbose_name = u"operation_time")
-    
-    def __unicode__(self):
-        return self.room_name
+    operation_time= models.DateTimeField(auto_now_add=True, verbose_name = u"operation_time")        
     
     def todict(self):
         dic = {}
