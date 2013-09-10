@@ -1,5 +1,7 @@
 //ms.js
 
+var MS_PAGE_SIZE = 20;
+
 var msJS = function(){
 	var self = this;
 	var server_grid = new Object();		//定义全局grid，方便其他方法中的调用
@@ -11,11 +13,11 @@ var msJS = function(){
 		self.plat = param;
 		
 		self.server_store = new Ext.data.JsonStore({
-			url : '/get_ms_list/' + self.plat,
-			root : 'data',
-			//totalProperty : 'total_count',
-			//remoteSort : true,
-			//pruneModifiedRecords: true, 
+			url: '/get_ms_list/' + self.plat + '/',			
+			root: 'data',
+			totalProperty: 'total_count',
+			remoteSort: true,
+			pruneModifiedRecords: true, 		//必须为true，这样重新reload数据时，会将脏数据清除
 			fields : [
 				{name: 'server_id', type: 'int'},
 				'server_name',
@@ -64,8 +66,24 @@ var msJS = function(){
 			{header : 'check_time', id : 'check_time', dataIndex : 'check_time', sortable : true, xtype: 'datecolumn', format : 'Y-m-d H:i:s', width: 160}
 			//{header : '', id : 'null_id', dataIndex : '', sortable : flase}
 		]);
-			
-		self.server_store.load();
+		
+		var server_page = new Ext.PagingToolbar({
+				plugins: [new Ext.ui.plugins.SliderPageSize(), new Ext.ui.plugins.ComboPageSize({ addToItem: false, prefixText: '每页', postfixText: '条'}),new Ext.ux.ProgressBarPager()],
+				//plugins: [new Ext.ui.plugins.SliderPageSize()],
+	            pageSize: MS_PAGE_SIZE,		//每页要展现的记录数，默认从定义的全局变量获取
+	            store: self.server_store,
+	            displayInfo: true,
+	            displayMsg: ' 显示第{0}条 到 {1}条记录， 共 {2}条',
+	            emptyMsg: "没有记录",
+	            prevText: "上一页",
+                nextText: "下一页",
+                refreshText: "刷新",
+                lastText: "最后页",
+                firstText: "第一页",
+                beforePageText: "当前页",
+                afterPageText: "共{0}页"
+		});
+		
 		self.server_grid = new Ext.grid.EditorGridPanel({
 			id: 			tab_id,
 			title: 			tab_title,
@@ -84,7 +102,7 @@ var msJS = function(){
 			viewConfig : {
 				forceFit:true, sortAscText:'升序',sortDescText:'降序',columnsText:'可选列'
 			},
-			tbar : [{
+			tbar: [{
 				text: '同步数据库',
 				iconCls: 'sync',
 				handler: self.sync_ms_db
@@ -98,9 +116,11 @@ var msJS = function(){
 				text: 'MS详细状态',				
 				iconCls: 'detail',
 				handler: self.show_ms_detail
-			}]
+			}],
+			bbar: server_page
 		});
 		
+		self.server_store.load({params:{start:0,limit:MS_PAGE_SIZE}});
 		
 		main_panel.add(self.server_grid);
 		main_panel.setActiveTab(self.server_grid);			

@@ -9,6 +9,7 @@ import sys
 import re
 import MySQLdb
 import time
+import string
 
 
 def get_ms_local(platform):
@@ -78,11 +79,49 @@ def get_ms_macross(platform):
 
         
 def get_ms_list(request, platform):
-    servers = get_ms_local(platform)
+    servers = get_ms_local(platform)    
     
+    print request.REQUEST
+    #print request.REQUEST['start']
+    #print request.REQUEST['limit']
+    #{u'sort': u'server_id', u'start': u'0', u'limit': u'20', u'dir': u'ASC'}
+    #{u'sort': u'server_name', u'start': u'0', u'limit': u'20', u'dir': u'DESC'}
+    start = request.REQUEST['start']
+    limit = request.REQUEST['limit']
+    sort = ''
+    if 'sort' in request.REQUEST:
+        sort  = request.REQUEST['sort']
+    dir = ''
+    if 'dir' in request.REQUEST:
+        dir   = request.REQUEST['dir']
+            
+    order_by = ''
+    if(len(dir) > 0):
+        if(dir == 'ASC'):
+            order_by += ''
+        elif(dir == 'DESC'):
+            order_by += '-'
+                
+    if(len(sort) > 0):
+        order_by += sort
+    
+    servers2 = servers
+    if(len(order_by) > 0):
+        servers2 = servers.order_by(order_by)
+    
+    start_index = string.atoi(start)
+    limit_num = string.atoi(limit)
+    
+    index = 0
+    num = 0
     return_datas = {'success':True, 'data':[]}
-    for server in servers:
-        return_datas['data'].append(server.todict())
+    return_datas['total_count'] = len(servers2)
+    for server in servers2:
+        if(index >= start_index) and (num < limit_num):
+            return_datas['data'].append(server.todict())
+            num += 1
+        index += 1
+        
     return HttpResponse(json.dumps(return_datas))
 
 
