@@ -129,8 +129,8 @@ ScriptLoader.prototype = {
 	},
 
 	processSuccess: function(response) {
-		this.scripts[response.argument.url] = true;
-		window.execScript ? window.execScript(response.responseText) : window.eval(response.responseText);
+		this.scripts[response.argument.url] = true;		
+		window.execScript ? window.execScript(response.responseText) : window.eval(response.responseText);		
 		if (response.argument.options.scripts.length == 0) {
 			this.hideMask();
 		}
@@ -256,7 +256,7 @@ function index_main(action_method, title_name, param) {
 			tmpChar = action_method.substring(0,1).toUpperCase();
 			postString = action_method.substring(1,strLen);
 			action_method = tmpChar + postString;
-			var _method = (action_method + "." + ext_action_method);
+			var _method = (action_method + "." + ext_action_method);			
 			eval(_method)(tab_id, title_name, param);
 		}
 	});

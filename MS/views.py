@@ -204,7 +204,7 @@ def sync_ms_db(request, platform):
             ms_local.delete()
             num_delete += 1  
     
-    output = 'now: %s' % (now_time)
+    output = 'now: %s, ' % (now_time)
     output += 'macross: %d, ' % (num_macross)
     output += 'local: %d, ' % (num_local)
     output += 'insert: %d, ' % (num_insert)
