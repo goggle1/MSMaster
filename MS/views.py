@@ -8,6 +8,7 @@ import models
 import sys
 import re
 import MySQLdb
+import time
 
 
 def get_ms_local(platform):
@@ -115,6 +116,8 @@ def sync_ms_db(request, platform):
     num_update = 0
     num_delete = 0
     
+    now_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+    
     for ms_local in ms_list_local:
         ms_local.is_valid = 0
     
@@ -133,7 +136,11 @@ def sync_ms_db(request, platform):
                                                protocol_version   = ms_macross['protocol_version'], \
                                                is_valid           = ms_macross['is_valid'],         \
                                                task_number        = 0,                              \
-                                               check_time         = '2013-09-09 00:00:00'           \
+                                               server_status1     = 0,                              \
+                                               server_status2     = 0,                              \
+                                               server_status3     = 0,                              \
+                                               server_status4     = 0,                              \
+                                               check_time         = now_time           \
                                                )
             ms_local.save()
             num_insert += 1
@@ -149,17 +156,16 @@ def sync_ms_db(request, platform):
             ms_local.server_version     = ms_macross['server_version']
             ms_local.protocol_version   = ms_macross['protocol_version']
             ms_local.is_valid           = ms_macross['is_valid']
-            ms_local.check_time         = '2013-09-09 00:00:00'
+            ms_local.check_time         = now_time
             ms_local.save()
             num_update += 1
                 
     for ms_local in ms_list_local:
         if(ms_local.is_valid == 0):
-            num_delete += 1   
-    #ms_list_local.get(is_valid=0).delete()
-    models.mobile_ms_server.objects.filter(is_valid=0).delete()
+            ms_local.delete()
+            num_delete += 1  
     
-    output = ''
+    output = 'now: %s' % (now_time)
     output += 'macross: %d, ' % (num_macross)
     output += 'local: %d, ' % (num_local)
     output += 'insert: %d, ' % (num_insert)

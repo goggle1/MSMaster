@@ -51,66 +51,59 @@ var msJS = function(){
 			{header : 'controll_port', id : 'controll_port', dataIndex : 'controll_port', sortable : true},
 			{header : 'room_id', id : 'room_id', dataIndex : 'room_id', sortable : true},
 			{header : 'room_name', id : 'room_name', dataIndex : 'room_name', sortable : true},
-			{header : 'server_version', id : 'server_version', dataIndex : 'server_version', sortable : true},
-			{header : 'protocol_version', id : 'protocol_version', dataIndex : 'protocol_version', sortable : true},
-			{header : 'identity_file', id : 'identity_file', dataIndex : 'identity_file', sortable : true},
-			{header : 'password', id : 'password', dataIndex : 'password', sortable : true},
-			{header : 'is_valid', id : 'is_valid', dataIndex : 'is_valid', sortable : true},
+			{header : 'server_version', id : 'server_version', dataIndex : 'server_version', sortable : true, hidden: true},
+			{header : 'protocol_version', id : 'protocol_version', dataIndex : 'protocol_version', sortable : true, hidden: true},
+			{header : 'identity_file', id : 'identity_file', dataIndex : 'identity_file', sortable : true, hidden: true},
+			{header : 'password', id : 'password', dataIndex : 'password', sortable : true, hidden: true},
+			{header : 'is_valid', id : 'is_valid', dataIndex : 'is_valid', sortable : true, hidden: true},
 			{header : 'task_number', id : 'task_number', dataIndex : 'task_number', sortable : true},
 			{header : 'server_status1', id : 'server_status1', dataIndex : 'server_status1', sortable : true, renderer : server_status},
 			{header : 'server_status2', id : 'server_status2', dataIndex : 'server_status2', sortable : true, renderer : server_status},
 			{header : 'server_status3', id : 'server_status3', dataIndex : 'server_status3', sortable : true, renderer : server_status},
 			{header : 'server_status4', id : 'server_status4', dataIndex : 'server_status4', sortable : true, renderer : server_status},
-			{header : 'check_time', id : 'check_time', dataIndex : 'check_time', sortable : true, xtype: 'datecolumn', format : 'Y-m-d H:i:s'}
+			{header : 'check_time', id : 'check_time', dataIndex : 'check_time', sortable : true, xtype: 'datecolumn', format : 'Y-m-d H:i:s', width: 160}
+			//{header : '', id : 'null_id', dataIndex : '', sortable : flase}
 		]);
-
+			
 		self.server_store.load();
 		self.server_grid = new Ext.grid.EditorGridPanel({
-			id : tab_id,
-			title : tab_title,
-			iconCls : 'tabs',
-			closable : true,
-			columnLines : true,		//True表示为在列分隔处显示分隔符
-			collapsible : false,		//面板是否可收缩的
-			stripeRows : true,		//隔行变色
-			store : self.server_store,
-			colModel : server_mode,
-			selModel : sel_mode,
-			loadMask : {msg:'正在加载数据，请稍侯……'},
-			//stateId : tab_id+'_grid'
+			id: 			tab_id,
+			title: 			tab_title,
+			iconCls: 		'tabs',
+			clicksToEdit: 	2,
+			autoScroll: 	true,		//内容溢出时出现滚动条
+			closable: 		true,
+			columnLines: 	true,		//True表示为在列分隔处显示分隔符
+			collapsible: 	false,		//面板是否可收缩的
+			stripeRows: 	true,		//隔行变色
+			store: 			self.server_store,
+			colModel: 		server_mode,
+			selModel: 		sel_mode,
+			loadMask: 		{ msg: '正在加载数据，请稍侯……' },
+			//stateId: tab_id+'_grid'
 			viewConfig : {
-				forceFit:true,sortAscText:'升序',sortDescText:'降序',columnsText:'可选列'//列按比率分配，占满整个grid
+				forceFit:true, sortAscText:'升序',sortDescText:'降序',columnsText:'可选列'
 			},
 			tbar : [{
-				text:'同步数据库',
-				iconCls : 'sync',
-				handler : self.sync_ms_db
+				text: '同步数据库',
+				iconCls: 'sync',
+				handler: self.sync_ms_db
 			},'-',{
 				id: 'add_server_button',
-				text: '刷新MS列表',
-				//hidden: true,
+				text: '刷新MS列表',				
 				iconCls: 'refresh',
 				handler: self.refresh_ms_list
 			},'-',{
 				id: 'active_server_button',
-				text: 'MS详细状态',
-				//hidden: true,
+				text: 'MS详细状态',				
 				iconCls: 'detail',
 				handler: self.show_ms_detail
-			}]/*,'-',{
-				text:'下载报表',
-				tooltip:"下载报表",
-				width:75,xtype:'button',
-				iconCls:'down',
-				//handler:self.down_ms_csv
-			},'->',{
-				id: 'pc_server_global_info',
-				text:'',
-				xtype:'tbtext'
-			}]*/
+			}]
 		});
+		
+		
 		main_panel.add(self.server_grid);
-		main_panel.setActiveTab(self.server_grid);
+		main_panel.setActiveTab(self.server_grid);			
 
 		function server_status(value) {
 			switch(value) {
@@ -212,7 +205,7 @@ var msJS = function(){
 				//console.log(response.responseText);				
 				var ms_panel = new Ext.Panel({
 				  //renderTo: 'panelDiv',
-				  title: 'MS详细状态',
+				  title: 'MS状态: ' + ms_ips,
 				  iconCls : 'tabs',
 	    		  closable : true,
 	    		  autoScroll: true,
