@@ -4,12 +4,14 @@ var msJS = function(){
 	var self = this;
 	var server_grid = new Object();		//定义全局grid，方便其他方法中的调用
 	var server_store = new Object();		//定义全局store，方便其他方法中的调用
+	var plat = '';
 	
 	this.ext_ms = function(tab_id, tab_title, param){
 		var main_panel = Ext.getCmp("main_panel");
-
+		self.plat = param;
+		
 		self.server_store = new Ext.data.JsonStore({
-			url : '/ms/' + param,
+			url : '/get_ms_list/' + self.plat,
 			root : 'data',
 			//totalProperty : 'total_count',
 			//remoteSort : true,
@@ -59,7 +61,7 @@ var msJS = function(){
 			{header : 'server_status2', id : 'server_status2', dataIndex : 'server_status2', sortable : true, renderer : server_status},
 			{header : 'server_status3', id : 'server_status3', dataIndex : 'server_status3', sortable : true, renderer : server_status},
 			{header : 'server_status4', id : 'server_status4', dataIndex : 'server_status4', sortable : true, renderer : server_status},
-			{header : 'check_time', id : 'check_time', dataIndex : 'check_time', sortable : true, xtype: 'datecolumn', format : 'Y-m-d H:i:s'},
+			{header : 'check_time', id : 'check_time', dataIndex : 'check_time', sortable : true, xtype: 'datecolumn', format : 'Y-m-d H:i:s'}
 		]);
 
 		self.server_store.load();
@@ -80,33 +82,21 @@ var msJS = function(){
 				forceFit:true,sortAscText:'升序',sortDescText:'降序',columnsText:'可选列'//列按比率分配，占满整个grid
 			},
 			tbar : [{
-				text:'刷新',
-				iconCls : 'refresh',
-				handler : self.refresh_server
+				text:'同步数据库',
+				iconCls : 'sync',
+				handler : self.sync_ms_db
 			},'-',{
 				id: 'add_server_button',
-				text: '新增',
+				text: '刷新MS列表',
 				//hidden: true,
-				iconCls: 'add',
-				handler: self.addServerBegin
+				iconCls: 'refresh',
+				handler: self.refresh_ms_list
 			},'-',{
 				id: 'active_server_button',
-				text: '激活',
+				text: 'MS详细状态',
 				//hidden: true,
-				iconCls: 'active',
-				handler: self.activeServer
-			},'-',{
-				id: 'stop_server_button',
-				text: '停用',
-				//hidden: true,
-				iconCls: 'stop',
-				handler: self.stopServer
-			},'-',{
-				id: 'show_broker_tasks',
-				text: '显示任务',
-				//hidden: true,
-				iconCls: 'list',
-				handler: self.showTasks
+				iconCls: 'detail',
+				handler: self.show_ms_detail
 			}]/*,'-',{
 				text:'下载报表',
 				tooltip:"下载报表",
@@ -174,172 +164,66 @@ var msJS = function(){
 		self.server_grid.addListener('contextmenu', function(e){e.preventDefault(); })//禁用浏览器默认的右键，针对grid禁用
 	};
 	
-	this.refresh_server = function() {
-		self.server_store.reload();
+	this.sync_ms_db = function() 
+	{
+		Ext.Ajax.request({
+			url: '/sync_ms_db/' + self.plat + '/',			
+			params: '',
+			success: function(response) {
+				Ext.MessageBox.alert('成功', response.responseText);	
+			},
+			failure: function(response){
+				Ext.MessageBox.alert('失败', Ext.encode(response));
+			}			
+		});
 	}
 	
-	/**
-	 * 添加转码服务器
-	 */
-	this.addServerBegin = function() {
-		if (Ext.get("add_server_info_win")) {
-			Ext.getCmp("add_server_info_win").show();
-			return;	//同时只存在一个添加权限信息的页面
-		}
-		
-		var add_server_form = new Ext.FormPanel({
-			id: 'add_server_form',
-			autoWidth: true,//自动调整宽度
-			url:'',
-			frame:true,
-			monitorValid : true,
-			bodyStyle:'padding:5px 5px 0',
-			labelWidth:150,
-			defaults:{xtype:'textfield',width:200},
-			items: [
-				{fieldLabel:'服务器IP', name:'server_ip'},
-				{fieldLabel:'服务器端口', name:'server_port'},
-				{fieldLabel:'服务器状态', id:'server_status', xtype:'numberfield'}
-			],
-			buttons: [{
-				text: '增加',
-				handler: self.addServerEnd,
-				formBind : true
-			},{
-				text: '取消',
-				handler: function(){Ext.getCmp("add_server_info_win").close();}
-			}]
-		});
-		
-		var win = new Ext.Window({
-			width:600,height:500,minWidth:400,minHeight:200,
-			autoScroll:'auto',
-			title : "新增转码服务器",
-			id : "add_server_info_win",
-			renderTo: "ext_server",
-			collapsible: true,
-			modal:false,	//True 表示为当window显示时对其后面的一切内容进行遮罩，false表示为限制对其它UI元素的语法（默认为 false
-			//所谓布局就是指容器组件中子元素的分布，排列组合方式
-			layout: 'form',//layout布局方式为form
-			maximizable:true,
-			minimizable:false,
-			items: add_server_form
-		}).show();
-	};
-	
-	this.addServerEnd = function() {
-		Ext.getCmp('add_server_form').form.submit({
-			waitMsg : '正在添加......',
-			url : '/add_server/',
-			method : 'post',
-			timeout : 5000,//5秒超时, 
-			params : '',
-			success : function(form, action) {
-				var result = Ext.util.JSON.decode(action.response.responseText);
-				Ext.getCmp("add_server_info_win").close();
-				Ext.MessageBox.alert('成功', result.data);
-				self.server_store.reload();			//重新载入数据，即根据当前页面的条件，刷新用户页面
-			},
-			failure : function(form, action) {
-				alert('失败:' + action.response.responseText);
-				if(typeof(action.response) == 'undefined'){
-					Ext.MessageBox.alert('警告','添加失败，请重新添加！');
-				} else {
-					var result = Ext.util.JSON.decode(action.response.responseText);
-					if(action.failureType == Ext.form.Action.SERVER_INVALID){
-						Ext.MessageBox.alert('警告', result.data);
-					}else{
-						Ext.MessageBox.alert('警告','表单填写异常，请重新填写！');
-					}
-				}
-			}
-		});
-	};
+	this.refresh_ms_list = function() 
+	{
+		self.server_store.reload();
+	}
 
-	this.activeServer = function() {
+	this.show_ms_detail = function() {
 		var grid = self.server_grid;
 		var t_sm = grid.getSelectionModel();
 
 		//此处为多选行，如果没有选中任意一行时，需要对右键当前行进行选中设置
 		//如果右键当前行不在选中的行中，则移除所选的行，选择当前行
-		var server_id_arr = []
-		if (t_sm.getSelected()) {
+		var ms_ips = []
+		if (t_sm.getSelected()) 
+		{
 			var recs = t_sm.getSelections();
-			for (var i = 0; i < recs.length; i++) {
-				server_id_arr.push(recs[i].get('server_id'));
+			for (var i = 0; i < recs.length; i++) 
+			{
+				ms_ips.push(recs[i].get('controll_ip'));
 			}
 		}
-		//console.log(server_id_arr);
-
-		Ext.Ajax.request({
-			url: "/active_server/",
-			//params:"server_ids={'server_ids': "+Ext.encode(server_id_arr)+"}",
-			params:'server_ids='+server_id_arr,
-			success: function(response) {
-				Ext.MessageBox.alert('成功', Ext.encode(response));
-				self.server_store.reload();
-			},
-			failure: function(response){
-				Ext.MessageBox.alert('失败', Ext.encode(response));
-			}
-			//timeout: (this.timeout*1000);
-		});
-
-	};
-
-	this.stopServer = function() {
-		var grid = self.server_grid;
-		var t_sm = grid.getSelectionModel();
-
-		//此处为多选行，如果没有选中任意一行时，需要对右键当前行进行选中设置
-		//如果右键当前行不在选中的行中，则移除所选的行，选择当前行
-		var server_id_arr = []
-		if (t_sm.getSelected()) {
-			var recs = t_sm.getSelections();
-			for (var i = 0; i < recs.length; i++) {
-				server_id_arr.push(recs[i].get('server_id'));
-			}
+		else
+		{
+			return;
 		}
-		//console.log(server_id_arr);
+		//console.log(ms_ips);
 
 		Ext.Ajax.request({
-			url: "/stop_server/",
-			//params:"server_ids={'server_ids': "+Ext.encode(server_id_arr)+"}",
-			params:'server_ids='+server_id_arr,
+			url: '/show_ms_info/' + self.plat + '/',				
+			params: 'ips=' + ms_ips,
 			success: function(response) {
-				Ext.MessageBox.alert('成功', Ext.encode(response));
-				self.server_store.reload();
-			},
-			failure: function(response){
-				Ext.MessageBox.alert('失败', Ext.encode(response));
-			}
-			//timeout: (this.timeout*1000);
-		});
-
-	};
-
-	this.showTasks = function() {
-		var grid = self.server_grid;
-		var t_sm = grid.getSelectionModel();
-
-		//此处为多选行，如果没有选中任意一行时，需要对右键当前行进行选中设置
-		//如果右键当前行不在选中的行中，则移除所选的行，选择当前行
-		var server_id_arr = []
-		if (t_sm.getSelected()) {
-			var recs = t_sm.getSelections();
-			for (var i = 0; i < recs.length; i++) {
-				server_id_arr.push(recs[i].get('server_id'));
-			}
-		}
-		//console.log(server_id_arr);
-
-		Ext.Ajax.request({
-			url: "/set_show_broker/",
-			//params:"server_ids={'server_ids': "+Ext.encode(server_id_arr)+"}",
-			params:'server_ids='+server_id_arr,
-			success: function(response) {
-				Ext.MessageBox.alert('成功', Ext.encode(response));
-				self.server_store.reload();
+				//Ext.MessageBox.alert('成功', Ext.encode(response));	
+				//console.log(response.responseText);				
+				var ms_panel = new Ext.Panel({
+				  //renderTo: 'panelDiv',
+				  title: 'MS详细状态',
+				  iconCls : 'tabs',
+	    		  closable : true,
+	    		  autoScroll: true,
+				  items:[{
+				    html: response.responseText
+				  }]
+				});
+				var main_panel = Ext.getCmp("main_panel");
+				main_panel.add(ms_panel);
+				main_panel.setActiveTab(ms_panel);		
+				
 			},
 			failure: function(response){
 				Ext.MessageBox.alert('失败', Ext.encode(response));

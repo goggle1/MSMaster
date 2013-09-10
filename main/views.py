@@ -23,7 +23,7 @@ def tree(request):
     
     # 移动平台
     tree_node = {}
-    tree_node['href'] = "javascript:void(index_main('mobile_platform', '移动平台'))"
+    tree_node['href'] = ""
     tree_node['icon'] = '/static/css/img/tree/files.gif'
     tree_node['id'] = 3
     tree_node['leaf'] = False
@@ -56,7 +56,7 @@ def tree(request):
     child_node = {}
     child_node['href'] = "javascript:void(index_main('task', '移动任务列表', 'mobile'))"
     child_node['icon'] = '/static/css/img/tree/files.gif'
-    child_node['id'] = 6
+    child_node['id'] = 7
     child_node['leaf'] = True
     child_node['qtip'] = '任务列表'
     child_node['singleClickExpand'] = True
@@ -65,7 +65,7 @@ def tree(request):
     
     # PC平台
     tree_node = {}
-    tree_node['href'] = "javascript:void(index_main('pc_platform', 'PC平台'))"
+    tree_node['href'] = ""
     tree_node['icon'] = '/static/css/img/tree/files.gif'
     tree_node['id'] = 4
     tree_node['leaf'] = False
@@ -78,7 +78,7 @@ def tree(request):
     child_node = {}
     child_node['href'] = "javascript:void(index_main('ms', 'PC MS列表', 'pc'))"
     child_node['icon'] = '/static/css/img/tree/files.gif'
-    child_node['id'] = 5
+    child_node['id'] = 8
     child_node['leaf'] = True
     child_node['qtip'] = 'MS列表'
     child_node['singleClickExpand'] = True
@@ -88,7 +88,7 @@ def tree(request):
     child_node = {}
     child_node['href'] = "javascript:void(index_main('room', 'PC机房列表', 'pc'))"
     child_node['icon'] = '/static/css/img/tree/files.gif'
-    child_node['id'] = 6
+    child_node['id'] = 9
     child_node['leaf'] = True
     child_node['qtip'] = '机房列表'
     child_node['singleClickExpand'] = True
@@ -98,7 +98,7 @@ def tree(request):
     child_node = {}
     child_node['href'] = "javascript:void(index_main('task', 'PC任务列表', 'pc'))"
     child_node['icon'] = '/static/css/img/tree/files.gif'
-    child_node['id'] = 6
+    child_node['id'] = 10
     child_node['leaf'] = True
     child_node['qtip'] = '任务列表'
     child_node['singleClickExpand'] = True

@@ -224,7 +224,7 @@ function index_main(action_method, title_name, param) {
 		logout();
 		return true;
 	}
-
+	
 	ext_action_method = 'ext_'+action_method;
 	tab_id = ext_action_method + '_' + param;
 	if (Ext.get(tab_id)) {
