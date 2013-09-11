@@ -24,4 +24,6 @@ urlpatterns = patterns('',
     url(r'^sync_room_db/([^/]+)/$',     'room.views.sync_room_db'),
     url(r'^modify_room/([^/]+)/$',      'room.views.modify_room'),
     url(r'^get_task_list/([^/]+)/$',    'task.views.get_task_list'),
+    url(r'^down_hot_tasks/([^/]+)/$',   'task.views.down_hot_tasks'),
+    url(r'^down_cold_tasks/([^/]+)/$',  'task.views.down_cold_tasks'),
 )

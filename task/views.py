@@ -60,3 +60,53 @@ def get_task_list(request, platform):
         index += 1
         
     return HttpResponse(json.dumps(return_datas))
+
+def down_hot_tasks(request, platform):
+    tasks = get_task_local(platform)    
+    
+    print request.REQUEST
+    #print request.REQUEST['start']
+    #print request.REQUEST['limit']
+    #{u'sort': u'server_id', u'start': u'0', u'limit': u'20', u'dir': u'ASC'}
+    #{u'sort': u'server_name', u'start': u'0', u'limit': u'20', u'dir': u'DESC'}
+    task_num = request.REQUEST['task_num']
+    
+    tasks2 = tasks.order_by('-hits_num')
+        
+    index = 0
+    num = 0
+    output = ''
+    for task in tasks2:
+        if(index >= 0) and (num < task_num):
+            output += '%s,%s,%s,%s\n' % (task.hash, task.create_time, task.hits_num, task.cold)
+            num += 1
+        index += 1
+    
+    response = HttpResponse(output, content_type='text/comma-separated-values')
+    response['Content-Disposition'] = 'attachment; filename=hot_tasks_%s_%s.csv' % (platform, task_num)
+    return response
+
+def down_cold_tasks(request, platform):
+    tasks = get_task_local(platform)    
+    
+    print request.REQUEST
+    #print request.REQUEST['start']
+    #print request.REQUEST['limit']
+    #{u'sort': u'server_id', u'start': u'0', u'limit': u'20', u'dir': u'ASC'}
+    #{u'sort': u'server_name', u'start': u'0', u'limit': u'20', u'dir': u'DESC'}
+    task_num = request.REQUEST['task_num']
+    
+    tasks2 = tasks.order_by('cold')
+        
+    index = 0
+    num = 0
+    output = ''
+    for task in tasks2:
+        if(index >= 0) and (num < task_num):
+            output += '%s,%s,%s,%s\n' % (task.hash, task.create_time, task.hits_num, task.cold)
+            num += 1
+        index += 1
+    
+    response = HttpResponse(output, content_type='text/comma-separated-values')
+    response['Content-Disposition'] = 'attachment; filename=cold_tasks_%s_%s.csv' % (platform, task_num)
+    return response

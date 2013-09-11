@@ -9,6 +9,9 @@ class mobile_task(models.Model):
     hits_num     = models.IntegerField(blank = False, null = True,  verbose_name = u"hits_num")
     cold         = models.FloatField(blank = False, null = True,  verbose_name = u"cold") 
     
+    class Meta:
+        db_table    = "mobile_task"
+        
     def todict(self):
         dic = {}
         dic['hash'] = str(self.hash)
@@ -16,9 +19,7 @@ class mobile_task(models.Model):
         dic['hits_num'] = str(self.hits_num)
         dic['cold'] = str(self.cold)
         return dic
-    
-    class Meta:
-        db_table    = "mobile_task" 
+         
         
 class pc_task(models.Model):
     # config
@@ -27,13 +28,14 @@ class pc_task(models.Model):
     hits_num     = models.IntegerField(blank = False, null = True,  verbose_name = u"hits_num")
     cold         = models.FloatField(blank = False, null = True,  verbose_name = u"cold") 
     
+    class Meta:
+        db_table    = "pc_task" 
+        
     def todict(self):
         dic = {}
         dic['hash'] = str(self.hash)
         dic['create_time'] = str(self.create_time)
         dic['hits_num'] = str(self.hits_num)
         dic['cold'] = str(self.cold)
-        return dic
+        return dic    
     
-    class Meta:
-        db_table    = "pc_task" 

@@ -31,9 +31,9 @@ var taskJS = function(){
 			new Ext.grid.RowNumberer(),
 			sel_mode,
 			{header : 'hash', id : 'hash', dataIndex : 'hash', sortable : true},
-			{header : 'create_time', id : 'create_time', dataIndex : 'create_time', sortable : true, },
+			{header : 'create_time', id : 'create_time', dataIndex : 'create_time', sortable : true},
 			{header : 'hits_num', id : 'hits_num', dataIndex : 'hits_num', sortable : true},
-			{header : 'cold', id : 'cold', dataIndex : 'cold', sortable : true, width:100},			
+			{header : 'cold', id : 'cold', dataIndex : 'cold', sortable : true, width:100}		
 		]);
 		
 		var task_page = new Ext.PagingToolbar({
@@ -103,6 +103,36 @@ var taskJS = function(){
 	this.refresh_task_list = function() {
 		self.task_store.reload();
 	}
+	
+	this.down_hot_table = function(){
+		var pre_task_num = 20000;
+		Ext.MessageBox.prompt('下载热门任务列表', '请输入任务总数（整数）', down_hot_tasks, this, false, pre_task_num);
+		function down_hot_tasks(e, text){
+			if(e == "cancel")return true;
+			if(isNaN(text)){
+				Ext.Msg.alert("警告", "输入参数不正确，请输入数字！");
+				return false;
+			}
+			var url = "/down_hot_tasks/" + self.plat + "/";
+			url = url + "?task_num=" + text;
+			location.href = url;
+		}
+	};
+	
+	this.down_cold_table = function(){
+		var pre_task_num = 20000;
+		Ext.MessageBox.prompt('下载冷门任务列表', '请输入任务总数（整数）', down_cold_tasks, this, false, pre_task_num);
+		function down_cold_tasks(e, text){
+			if(e == "cancel")return true;
+			if(isNaN(text)){
+				Ext.Msg.alert("警告", "输入参数不正确，请输入数字！");
+				return false;
+			}
+			var url = "/down_cold_tasks/" + self.plat + "/";
+			url = url + "?task_num=" + text;
+			location.href = url;
+		}
+	};
 	
 };
 
