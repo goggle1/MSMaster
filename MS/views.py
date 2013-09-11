@@ -35,13 +35,17 @@ class DB_MYSQL :
         
 def get_ms_macross(platform):
     ms_list = []
+    sql = ""
     
     reload(sys)
     sys.setdefaultencoding('utf8')
     
     db = DB_MYSQL()
     db.connect("192.168.8.101", 3317, "public", "funshion", "macross")
-    sql = "select s.server_id, s.server_name, s.server_ip, s.server_port, s.controll_ip, s.controll_port, s.ml_room_id, l.room_name, s.server_version, s.protocol_version, s.is_valid from fs_server s, fs_server_location l where s.ml_room_id=l.room_id and s.is_valid=1 order by s.server_id"
+    if(platform == 'mobile'):
+        sql = "select s.server_id, s.server_name, s.server_ip, s.server_port, s.controll_ip, s.controll_port, s.ml_room_id, l.room_name, s.server_version, s.protocol_version, s.is_valid from fs_server s, fs_server_location l where s.ml_room_id=l.room_id and s.is_valid=1 order by s.server_id"
+    elif(platform == 'pc'):
+        sql = "select s.server_id, s.server_name, s.server_ip, s.server_port, s.controll_ip, s.controll_port, s.room_id, l.room_name, s.server_version, s.protocol_version, s.is_valid from fs_server s, fs_server_location l where s.room_id=l.room_id and s.is_valid=1 order by s.server_id"    
     db.execute(sql)
     
     for row in db.cur.fetchall():
@@ -163,7 +167,8 @@ def sync_ms_db(request, platform):
     for ms_macross in ms_list_macross:
         ms_local = ms_list_find(ms_list_local, ms_macross['server_id'])
         if(ms_local == None):
-            ms_local = models.mobile_ms_server(server_id          = ms_macross['server_id'],        \
+            if(platform == 'mobile'):
+                ms_local = models.mobile_ms_server(server_id          = ms_macross['server_id'],        \
                                                server_name        = ms_macross['server_name'],      \
                                                server_ip          = ms_macross['server_ip'],        \
                                                server_port        = ms_macross['server_port'],      \
@@ -180,7 +185,27 @@ def sync_ms_db(request, platform):
                                                server_status3     = 0,                              \
                                                server_status4     = 0,                              \
                                                check_time         = now_time           \
-                                               )
+                                               ) 
+            elif(platform == 'pc'):
+                ms_local = models.pc_ms_server(server_id          = ms_macross['server_id'],        \
+                                               server_name        = ms_macross['server_name'],      \
+                                               server_ip          = ms_macross['server_ip'],        \
+                                               server_port        = ms_macross['server_port'],      \
+                                               controll_ip        = ms_macross['controll_ip'],      \
+                                               controll_port      = ms_macross['controll_port'],    \
+                                               room_id            = ms_macross['room_id'],          \
+                                               room_name          = ms_macross['room_name'],        \
+                                               server_version     = ms_macross['server_version'],   \
+                                               protocol_version   = ms_macross['protocol_version'], \
+                                               is_valid           = ms_macross['is_valid'],         \
+                                               task_number        = 0,                              \
+                                               server_status1     = 0,                              \
+                                               server_status2     = 0,                              \
+                                               server_status3     = 0,                              \
+                                               server_status4     = 0,                              \
+                                               check_time         = now_time           \
+                                               )            
+            
             ms_local.save()
             num_insert += 1
         else:

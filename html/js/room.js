@@ -1,6 +1,7 @@
 //room.js
 
 var ROOM_PAGE_SIZE = 20;
+var ROOM_LONG_TIMEOUT = 20;
 
 
 var roomJS = function(){	
@@ -93,6 +94,10 @@ var roomJS = function(){
 				iconCls: 'refresh',
 				handler: self.refresh_room_list
 			},'-',{				
+				text: '修改机房任务',				
+				iconCls: 'modify',
+				handler: self.modify_room_tasks
+			},'-',{				
 				text: '机房详细状态',				
 				iconCls: 'detail',
 				handler: self.show_room_detail
@@ -143,7 +148,7 @@ var roomJS = function(){
 		}
 		else
 		{
-			return;
+			return true;
 		}
 		//console.log(room_ids);
 
@@ -174,6 +179,121 @@ var roomJS = function(){
 			//timeout: (this.timeout*1000);
 		});
 
+	};
+	
+	this.modify_room_tasks = function(){
+		var grid = self.room_grid;
+		var sm = grid.getSelectionModel();		
+		if(!sm.getSelected()){
+			Ext.MessageBox.alert('提示','未选中记录');
+			return false;
+		}		
+		var record = sm.getSelections()[0];   //获取当前行的记录		
+		var room_id = record.get('room_id');		
+		var room_name = record.get('room_name');
+		var is_valid = record.get('is_valid');
+		var task_number = record.get('task_number');
+		var room_status = record.get('room_status');
+		var num_dispatching = record.get('num_dispatching');
+		var num_deleting = record.get('num_deleting');
+		var operation_time = record.get('operation_time');
+		//避免win的重复生成
+		if(Ext.get("modify_room_tasks_win_" + self.plat)){
+			Ext.getCmp("modify_room_tasks_win_" + self.plat).show();
+			return true;
+		}
+		
+		var modify_room_form = new Ext.FormPanel({
+			id: 'modify_room_form',
+			autoWidth: true,//自动调整宽度
+			url:'',
+			frame:true,
+			monitorValid : true,
+			bodyStyle:'padding:5px 5px 0',
+			labelWidth:150,
+			defaults:{xtype:'textfield',width:200},
+			items: [
+				{fieldLabel:'room_id', 		name:'room_id', 	value: room_id, 	hidden:true},
+				{fieldLabel:'room_id', 		name:'room_id', 	value: room_id, 	disabled:true},
+				{fieldLabel:'room_name', 	name:'room_name', 	value: room_name, 	disabled:true},
+				{fieldLabel:'is_valid', 	name:'is_valid', 	value: is_valid, 	disabled:true},
+				{fieldLabel:'task_number', 	name:'task_number',	value: task_number, disabled:true},
+				{fieldLabel:'room_status', 	name:'room_status',	value: room_status, disabled:true},
+				{fieldLabel:'num_dispatching',	
+					name: 'num_dispatching', 
+					value: num_dispatching, 
+					xtype: 'numberfield',
+					minValue: 0,
+					minText: '分发任务数不能小于0',
+					allowBlank:false,
+					blankText:'分发任务数不能为空'
+				},
+				{fieldLabel:'num_deleting',	
+					name: 'num_deleting', 
+					value: num_deleting, 
+					xtype: 'numberfield',
+					minValue: 0,
+					minText: '删除任务数不能小于0',
+					allowBlank:false,
+					blankText:'删除任务数不能为空'
+				},
+				{fieldLabel:'operation_time', 	name:'operation_time', 	value: operation_time, disabled:true}
+			],
+			buttons: [{
+				text: '确定',
+				handler: self.modifyRoomEnd,
+				formBind : true
+			},{
+				text: '取消',
+				handler: function(){Ext.getCmp("modify_room_tasks_win_" + self.plat + room_id).close();}
+			}]
+		});
+		
+		var win = new Ext.Window({
+			width:400,height:300,minWidth:200,minHeight:200,
+			autoScroll:'auto',
+			title : "修改机房任务",
+			id : "modify_room_tasks_win_" + self.plat,
+			//renderTo: "ext_room",
+			collapsible: true,
+			modal:false,	//True 表示为当window显示时对其后面的一切内容进行遮罩，false表示为限制对其它UI元素的语法（默认为 false
+			//所谓布局就是指容器组件中子元素的分布，排列组合方式
+			layout: 'form',//layout布局方式为form
+			maximizable:true,
+			minimizable:false,
+			items: modify_room_form
+		}).show();
+		
+		
+	};
+	
+	this.modifyRoomEnd = function() {
+		Ext.getCmp('modify_room_form').form.submit({
+			waitMsg : '正在修改......',
+			url : '/modify_room/' + self.plat + '/',
+			method : 'post',
+			timeout : 5000,//5秒超时, 
+			params : '',
+			success : function(form, action) {
+				var result = Ext.util.JSON.decode(action.response.responseText);
+				Ext.getCmp("modify_room_tasks_win_" + self.plat).close();
+				Ext.MessageBox.alert('成功', result.data);
+				self.room_store.reload();			//重新载入数据，即根据当前页面的条件，刷新用户页面
+			},
+			failure : function(form, action) {
+				alert('失败:' + action.response.responseText);
+				if(typeof(action.response) == 'undefined'){
+					Ext.MessageBox.alert('警告','添加失败，请重新添加！');
+				} else {
+					var result = Ext.util.JSON.decode(action.response.responseText);
+					if(action.failureType == Ext.form.Action.SERVER_INVALID){
+						Ext.MessageBox.alert('警告', result.data);
+					}else{
+						Ext.MessageBox.alert('警告','表单填写异常，请重新填写！');
+					}
+				}
+			}
+		});
 	};
 };
 

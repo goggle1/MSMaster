@@ -36,13 +36,17 @@ class DB_MYSQL :
         
 def get_room_macross(platform):
     room_list = []
+    sql = ""
     
     reload(sys)
     sys.setdefaultencoding('utf8')
     
     db = DB_MYSQL()
     db.connect("192.168.8.101", 3317, "public", "funshion", "macross")
-    sql = "select l.room_id, l.room_name, l.is_valid from fs_server s, fs_server_location l where s.ml_room_id=l.room_id and s.is_valid=1 and l.is_valid=1 group by l.room_id order by l.room_id"
+    if(platform == "mobile"):
+        sql = "select l.room_id, l.room_name, l.is_valid from fs_server s, fs_server_location l where s.ml_room_id=l.room_id and s.is_valid=1 and l.is_valid=1 group by l.room_id order by l.room_id"
+    elif(platform == "pc"):
+        sql = "select l.room_id, l.room_name, l.is_valid from fs_server s, fs_server_location l where s.room_id=l.room_id and s.is_valid=1 and l.is_valid=1 group by l.room_id order by l.room_id"
     db.execute(sql)
     
     for row in db.cur.fetchall():
@@ -151,7 +155,18 @@ def sync_room_db(request, platform):
         room_local = room_list_find(room_list_local, room_macross['room_id'])
         print room_macross['room_id'], room_macross['room_name'], room_macross['is_valid']
         if(room_local == None):
-            room_local = models.mobile_room(room_id           = room_macross['room_id'],        \
+            if(platform == 'mobile'):
+                room_local = models.mobile_room(room_id           = room_macross['room_id'],        \
+                                           room_name          = room_macross['room_name'],      \
+                                           is_valid           = room_macross['is_valid'],       \
+                                           task_number        = 0,                              \
+                                           room_status        = 0,                              \
+                                           num_dispatching    = 0,                              \
+                                           num_deleting       = 0,                              \
+                                           operation_time     = now_time                        \
+                                           )
+            elif(platform == 'pc'):
+                room_local = models.pc_room(room_id           = room_macross['room_id'],        \
                                            room_name          = room_macross['room_name'],      \
                                            is_valid           = room_macross['is_valid'],       \
                                            task_number        = 0,                              \
@@ -183,4 +198,20 @@ def sync_room_db(request, platform):
     output += 'num_delete: %d' % (num_delete)
         
     return HttpResponse(output)
+
+def modify_room(request, platform):
+    rooms = get_room_local(platform)    
+        
+    print request.REQUEST
+    the_room_id = request.REQUEST['room_id']
+    the_num_dispatching = request.REQUEST['num_dispatching']
+    the_num_deleting = request.REQUEST['num_deleting']
+    
+    now_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+    rooms.filter(room_id=the_room_id).update(num_dispatching=the_num_dispatching, num_deleting=the_num_deleting, operation_time=now_time)
+    
+    #{"success":true,"data":"\u201cSDYD-25\u201d\u4fee\u6539\u6210\u529f","createTime":"2013-09-11 14:16:56"}
+    return_datas = {'success':True, 'data': u'修改成功', "operationTime":"2013-09-11 14:16:56"}    
+    return HttpResponse(json.dumps(return_datas))
+
     
