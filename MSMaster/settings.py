@@ -130,7 +130,8 @@ INSTALLED_APPS = (
     'main',
     'MS',   
     'room',
-    'task' 
+    'task',
+    'operation'
 )
 
 # A sample logging configuration. The only tangible logging

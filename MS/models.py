@@ -1,5 +1,5 @@
+#-*-coding:utf-8-*-
 from django.db import models
-
 # Create your models here.
 
 class mobile_ms_server(models.Model):
@@ -37,7 +37,7 @@ class mobile_ms_server(models.Model):
         dic['controll_ip'] = str(self.controll_ip)
         dic['controll_port'] = str(self.controll_port)
         dic['room_id'] = str(self.room_id)
-        dic['room_name'] = self.room_name
+        dic['room_name'] = str(self.room_name)
         dic['server_version'] = str(self.server_version)
         dic['protocol_version'] = str(self.protocol_version)
         dic['identity_file'] = str(self.identity_file)
@@ -87,7 +87,7 @@ class pc_ms_server(models.Model):
         dic['controll_ip'] = str(self.controll_ip)
         dic['controll_port'] = str(self.controll_port)
         dic['room_id'] = str(self.room_id)
-        dic['room_name'] = self.room_name
+        dic['room_name'] = str(self.room_name)
         dic['server_version'] = str(self.server_version)
         dic['protocol_version'] = str(self.protocol_version)
         dic['identity_file'] = str(self.identity_file)

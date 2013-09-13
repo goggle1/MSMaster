@@ -106,12 +106,12 @@ var msJS = function(){
 				iconCls: 'sync',
 				handler: self.sync_ms_db
 			},'-',{
-				id: 'add_server_button',
+				id: 'refresh_ms_list',
 				text: '刷新MS列表',				
 				iconCls: 'refresh',
 				handler: self.refresh_ms_list
 			},'-',{
-				id: 'active_server_button',
+				id: 'show_ms_detail',
 				text: 'MS详细状态',				
 				iconCls: 'detail',
 				handler: self.show_ms_detail
@@ -171,9 +171,12 @@ var msJS = function(){
 			//	url: '/server/get_options/',
 			//});
 		}
+		
+		
 		//给控键添加右键菜单触发事件
 		self.server_grid.addListener('cellcontextmenu', rightClickRowMenu);
 		self.server_grid.addListener('contextmenu', function(e){e.preventDefault(); })//禁用浏览器默认的右键，针对grid禁用
+		
 	};
 	
 	this.sync_ms_db = function() 

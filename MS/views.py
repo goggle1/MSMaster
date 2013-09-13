@@ -10,6 +10,9 @@ import re
 import MySQLdb
 import time
 import string
+from operation.models import mobile_operation
+from operation.models import pc_operation
+import threading
 
 
 def get_ms_local(platform):
@@ -19,6 +22,7 @@ def get_ms_local(platform):
     elif(platform == 'pc'):
         ms_list = models.pc_ms_server.objects.all()    
     return ms_list
+
 
 class DB_MYSQL :
     conn = None
@@ -83,48 +87,43 @@ def get_ms_macross(platform):
 
         
 def get_ms_list(request, platform):
-    servers = get_ms_local(platform)    
-    
+    print 'get_ms_list'
     print request.REQUEST
-    #print request.REQUEST['start']
-    #print request.REQUEST['limit']
-    #{u'sort': u'server_id', u'start': u'0', u'limit': u'20', u'dir': u'ASC'}
-    #{u'sort': u'server_name', u'start': u'0', u'limit': u'20', u'dir': u'DESC'}
+    
     start = request.REQUEST['start']
     limit = request.REQUEST['limit']
+    start_index = string.atoi(start)
+    limit_num = string.atoi(limit)
+    
     sort = ''
     if 'sort' in request.REQUEST:
         sort  = request.REQUEST['sort']
-    dir = ''
+        
+    dire = ''
     if 'dir' in request.REQUEST:
-        dir   = request.REQUEST['dir']
+        dire   = request.REQUEST['dir']
             
     order_by = ''
-    if(len(dir) > 0):
-        if(dir == 'ASC'):
+    if(len(dire) > 0):
+        if(dire == 'ASC'):
             order_by += ''
-        elif(dir == 'DESC'):
+        elif(dire == 'DESC'):
             order_by += '-'
                 
     if(len(sort) > 0):
         order_by += sort
     
-    servers2 = servers
+    servers = get_ms_local(platform)    
+    servers2 = []
     if(len(order_by) > 0):
-        servers2 = servers.order_by(order_by)
+        servers2 = servers.order_by(order_by)[start_index:start_index+limit_num]
+    else:
+        servers2 = servers[start_index:start_index+limit_num]
     
-    start_index = string.atoi(start)
-    limit_num = string.atoi(limit)
-    
-    index = 0
-    num = 0
     return_datas = {'success':True, 'data':[]}
-    return_datas['total_count'] = len(servers2)
+    return_datas['total_count'] = servers.count()
     for server in servers2:
-        if(index >= start_index) and (num < limit_num):
-            return_datas['data'].append(server.todict())
-            num += 1
-        index += 1
+        return_datas['data'].append(server.todict())
         
     return HttpResponse(json.dumps(return_datas))
 
@@ -141,34 +140,70 @@ def show_ms_list(request, platform):
         the_page = response.read()
         output += the_page
     return HttpResponse(output)
+
  
 def ms_list_find(ms_list, server_id):
     for ms in ms_list:
         if(ms.server_id == server_id):
             return ms
     return None
+
+
+def get_operation_record(platform, the_type, the_name):
+    records = []
+    if(platform == 'mobile'):
+        records = mobile_operation.objects.filter(type=the_type, name=the_name)
+    elif(platform == 'pc'):
+        records = pc_operation.objects.filter(type=the_type, name=the_name)
+    return records
+
+
+def create_operation_record(platform, the_type, the_name, the_dispatch_time):
+    record = None    
+    if(platform == 'mobile'):
+        record = mobile_operation(type=the_type, name=the_name, dispatch_time=the_dispatch_time, status=0)
+        record.save()
+    elif(platform == 'pc'):
+        record = pc_operation(type=the_type, name=the_name, dispatch_time=the_dispatch_time, status=0)
+        record.save()
+    return record
+
+
+class MyThread(threading.Thread):
+    platform = ''
+    record = None
     
-def sync_ms_db(request, platform):  
-    ms_list_macross = get_ms_macross(platform)    
-    ms_list_local = get_ms_local(platform)
+    def __init__(self, the_platform, the_record):
+        super(MyThread, self).__init__()        
+        self.platform = the_platform
+        self.record = the_record
+        
+        
+    def run(self):
+        now_time = time.localtime(time.time())        
+        begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+        self.record.begin_time = begin_time
+        self.record.status = 1
+        self.record.save()
     
-    num_macross = len(ms_list_macross)
-    num_local = len(ms_list_local)
+        ms_list_macross = get_ms_macross(self.platform)    
+        ms_list_local = get_ms_local(self.platform)
     
-    num_insert = 0
-    num_update = 0
-    num_delete = 0
+        num_macross = ms_list_macross.__len__()
+        num_local = ms_list_local.count()
     
-    now_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+        num_insert = 0
+        num_update = 0
+        num_delete = 0
     
-    for ms_local in ms_list_local:
-        ms_local.is_valid = 0
+        for ms_local in ms_list_local:
+            ms_local.is_valid = 0
     
-    for ms_macross in ms_list_macross:
-        ms_local = ms_list_find(ms_list_local, ms_macross['server_id'])
-        if(ms_local == None):
-            if(platform == 'mobile'):
-                ms_local = models.mobile_ms_server(server_id          = ms_macross['server_id'],        \
+        for ms_macross in ms_list_macross:
+            ms_local = ms_list_find(ms_list_local, ms_macross['server_id'])
+            if(ms_local == None):
+                if(self.platform == 'mobile'):
+                    ms_local = models.mobile_ms_server(server_id          = ms_macross['server_id'],        \
                                                server_name        = ms_macross['server_name'],      \
                                                server_ip          = ms_macross['server_ip'],        \
                                                server_port        = ms_macross['server_port'],      \
@@ -184,10 +219,10 @@ def sync_ms_db(request, platform):
                                                server_status2     = 0,                              \
                                                server_status3     = 0,                              \
                                                server_status4     = 0,                              \
-                                               check_time         = now_time           \
+                                               check_time         = begin_time           \
                                                ) 
-            elif(platform == 'pc'):
-                ms_local = models.pc_ms_server(server_id          = ms_macross['server_id'],        \
+                elif(self.platform == 'pc'):
+                    ms_local = models.pc_ms_server(server_id          = ms_macross['server_id'],        \
                                                server_name        = ms_macross['server_name'],      \
                                                server_ip          = ms_macross['server_ip'],        \
                                                server_port        = ms_macross['server_port'],      \
@@ -203,38 +238,71 @@ def sync_ms_db(request, platform):
                                                server_status2     = 0,                              \
                                                server_status3     = 0,                              \
                                                server_status4     = 0,                              \
-                                               check_time         = now_time           \
+                                               check_time         = begin_time           \
                                                )            
             
-            ms_local.save()
-            num_insert += 1
-        else:
-            ms_local.server_id          = ms_macross['server_id']
-            ms_local.server_name        = ms_macross['server_name']
-            ms_local.server_ip          = ms_macross['server_ip']
-            ms_local.server_port        = ms_macross['server_port']
-            ms_local.controll_ip        = ms_macross['controll_ip']
-            ms_local.controll_port      = ms_macross['controll_port']
-            ms_local.room_id            = ms_macross['room_id']
-            ms_local.room_name          = ms_macross['room_name']
-            ms_local.server_version     = ms_macross['server_version']
-            ms_local.protocol_version   = ms_macross['protocol_version']
-            ms_local.is_valid           = ms_macross['is_valid']
-            ms_local.check_time         = now_time
-            ms_local.save()
-            num_update += 1
+                ms_local.save()
+                num_insert += 1
+            else:
+                ms_local.server_id          = ms_macross['server_id']
+                ms_local.server_name        = ms_macross['server_name']
+                ms_local.server_ip          = ms_macross['server_ip']
+                ms_local.server_port        = ms_macross['server_port']
+                ms_local.controll_ip        = ms_macross['controll_ip']
+                ms_local.controll_port      = ms_macross['controll_port']
+                ms_local.room_id            = ms_macross['room_id']
+                ms_local.room_name          = ms_macross['room_name']
+                ms_local.server_version     = ms_macross['server_version']
+                ms_local.protocol_version   = ms_macross['protocol_version']
+                ms_local.is_valid           = ms_macross['is_valid']
+                ms_local.check_time         = begin_time
+                ms_local.save()
+                num_update += 1
                 
-    for ms_local in ms_list_local:
-        if(ms_local.is_valid == 0):
-            ms_local.delete()
-            num_delete += 1  
+        for ms_local in ms_list_local:
+            if(ms_local.is_valid == 0):
+                ms_local.delete()
+                num_delete += 1  
     
-    output = 'now: %s, ' % (now_time)
-    output += 'macross: %d, ' % (num_macross)
-    output += 'local: %d, ' % (num_local)
-    output += 'insert: %d, ' % (num_insert)
-    output += 'num_update: %d, ' % (num_update)
-    output += 'num_delete: %d' % (num_delete)
+        now_time = time.localtime(time.time())        
+        end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+        self.record.end_time = end_time
+        self.record.status = 2        
+        output = 'now: %s, ' % (end_time)
+        output += 'macross: %d, ' % (num_macross)
+        output += 'local: %d, ' % (num_local)
+        output += 'insert: %d, ' % (num_insert)
+        output += 'num_update: %d, ' % (num_update)
+        output += 'num_delete: %d' % (num_delete)
+        self.record.memo = output
+        self.record.save()
         
-    return HttpResponse(output)
+            
+            
+def sync_ms_db(request, platform):  
+    print 'sync_ms_db'
+    print request.REQUEST
     
+    now_time = time.localtime(time.time())
+    today = time.strftime("%Y-%m-%d", now_time)
+    dispatch_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+    
+    operation = {}
+    operation['type'] = 'sync_ms_db'
+    operation['name'] = today
+        
+    output = ''
+    records = get_operation_record(platform, operation['type'], operation['name'])
+    if(len(records) == 0):
+        record = create_operation_record(platform, operation['type'], operation['name'], dispatch_time)
+        if(record != None):
+            output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
+            # start thread.
+            t = MyThread(platform, record)            
+            t.start()
+    else:
+        for record in records:
+            output += 'operation exist, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
+    
+    return HttpResponse(output)       
+

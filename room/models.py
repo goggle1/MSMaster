@@ -1,7 +1,7 @@
+#-*-coding:utf-8-*-
 from django.db import models
 
 # Create your models here.
-
 class mobile_room(models.Model):
     # config
     room_id       = models.IntegerField(blank = False, primary_key=True, verbose_name = u"room_id")
@@ -17,7 +17,7 @@ class mobile_room(models.Model):
     def todict(self):
         dic = {}
         dic['room_id'] = str(self.room_id)
-        dic['room_name'] = unicode(self.room_name)
+        dic['room_name'] = str(self.room_name)
         dic['is_valid'] = str(self.is_valid)
         dic['task_number'] = str(self.task_number)
         dic['room_status'] = str(self.room_status)
@@ -45,7 +45,7 @@ class pc_room(models.Model):
     def todict(self):
         dic = {}
         dic['room_id'] = str(self.room_id)
-        dic['room_name'] = unicode(self.room_name)
+        dic['room_name'] = str(self.room_name)
         dic['is_valid'] = str(self.is_valid)
         dic['task_number'] = str(self.task_number)
         dic['room_status'] = str(self.room_status)

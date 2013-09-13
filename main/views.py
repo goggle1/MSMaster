@@ -63,6 +63,16 @@ def tree(request):
     child_node['text'] = '任务列表'
     tree_node['children'].append(child_node)
     
+    child_node = {}
+    child_node['href'] = "javascript:void(index_main('operation', '移动操作列表', 'mobile'))"
+    child_node['icon'] = '/static/css/img/tree/files.gif'
+    child_node['id'] = 8
+    child_node['leaf'] = True
+    child_node['qtip'] = '操作列表'
+    child_node['singleClickExpand'] = True
+    child_node['text'] = '操作列表'
+    tree_node['children'].append(child_node)
+    
     # PC平台
     tree_node = {}
     tree_node['href'] = ""
@@ -78,7 +88,7 @@ def tree(request):
     child_node = {}
     child_node['href'] = "javascript:void(index_main('ms', 'PC MS列表', 'pc'))"
     child_node['icon'] = '/static/css/img/tree/files.gif'
-    child_node['id'] = 8
+    child_node['id'] = 9
     child_node['leaf'] = True
     child_node['qtip'] = 'MS列表'
     child_node['singleClickExpand'] = True
@@ -88,7 +98,7 @@ def tree(request):
     child_node = {}
     child_node['href'] = "javascript:void(index_main('room', 'PC机房列表', 'pc'))"
     child_node['icon'] = '/static/css/img/tree/files.gif'
-    child_node['id'] = 9
+    child_node['id'] = 10
     child_node['leaf'] = True
     child_node['qtip'] = '机房列表'
     child_node['singleClickExpand'] = True
@@ -98,11 +108,21 @@ def tree(request):
     child_node = {}
     child_node['href'] = "javascript:void(index_main('task', 'PC任务列表', 'pc'))"
     child_node['icon'] = '/static/css/img/tree/files.gif'
-    child_node['id'] = 10
+    child_node['id'] = 11
     child_node['leaf'] = True
     child_node['qtip'] = '任务列表'
     child_node['singleClickExpand'] = True
     child_node['text'] = '任务列表'
+    tree_node['children'].append(child_node)
+    
+    child_node = {}
+    child_node['href'] = "javascript:void(index_main('operation', 'PC操作列表', 'pc'))"
+    child_node['icon'] = '/static/css/img/tree/files.gif'
+    child_node['id'] = 12
+    child_node['leaf'] = True
+    child_node['qtip'] = '操作列表'
+    child_node['singleClickExpand'] = True
+    child_node['text'] = '操作列表'
     tree_node['children'].append(child_node)
     
     # 退出系统节点
