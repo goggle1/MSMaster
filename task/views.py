@@ -314,6 +314,7 @@ class Thread_UPLOAD(threading.Thread):
             upload_file = HITS_FILE.template_mobile % (hits_date)
         elif(self.platform == 'pc'):
             upload_file = HITS_FILE.template_mobile % (hits_date)
+        print 'add_hits_num %s' % (upload_file)
        
         hits_time = '%s-%s-%sT12:00:00+00:00' % (hits_date[0:4], hits_date[4:6], hits_date[6:8])  
         
@@ -323,9 +324,8 @@ class Thread_UPLOAD(threading.Thread):
         except:            
             return False
         
-        hash_list_local = get_task_local(self.platform)      
-        
-        #'''    
+        hash_list_local = get_task_local(self.platform)
+                    
         content = hits_file.readlines()
         for line in content:
             items = line.split(' ')
@@ -351,8 +351,8 @@ class Thread_UPLOAD(threading.Thread):
             line_num += 1
             #if(line_num > 55):
             #    break
-        hits_file.close()
-        #'''
+        hits_file.close()        
+        print 'add_hits_num line_num=%d' % (line_num)
         
         # calc cold1
         hash_list_cold = hash_list_local.filter(last_hit_time__lte = hits_time)  
@@ -379,6 +379,7 @@ class Thread_UPLOAD(threading.Thread):
             upload_file = HITS_FILE.template_mobile % (previous_day)
         elif(self.platform == 'pc'):
             upload_file = HITS_FILE.template_pc % (previous_day)
+        print 'sub_hits_num %s' % (upload_file)
        
         line_num = 0
         try:
@@ -412,6 +413,8 @@ class Thread_UPLOAD(threading.Thread):
             #if(line_num > 55):
             #    break
         hits_file.close()
+        print 'sub_hits_num line_num=%d' % (line_num)
+        
         return True
     
         
@@ -475,13 +478,15 @@ class Thread_UPLOAD(threading.Thread):
         now_time = time.localtime(time.time())        
         end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
         print 'end@ %s' % (end_time)
-        self.record.end_time = end_time
-        self.record.status = 2        
         output = 'now: %s, ' % (end_time)
         output += 'num_insert: %d, ' % (self.num_insert)
         output += 'num_update: %d, ' % (self.num_update)
         output += 'num_insert2: %d, ' % (self.num_insert2)
         output += 'num_update2: %d, ' % (self.num_update2)
+        print output
+        self.record.end_time = end_time
+        self.record.status = 2        
+        
         self.record.memo = output
         self.record.save()
         
