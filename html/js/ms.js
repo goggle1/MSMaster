@@ -37,6 +37,8 @@ var msJS = function(){
 				'server_status2',
 				'server_status3',
 				'server_status4',
+				'total_disk_space',
+				'free_disk_space',
 				'check_time'
 			]
 		});
@@ -61,9 +63,11 @@ var msJS = function(){
 			{header : 'task_number', id : 'task_number', dataIndex : 'task_number', sortable : true},
 			{header : 'server_status1', id : 'server_status1', dataIndex : 'server_status1', sortable : true, renderer : server_status},
 			{header : 'server_status2', id : 'server_status2', dataIndex : 'server_status2', sortable : true, renderer : server_status},
-			{header : 'server_status3', id : 'server_status3', dataIndex : 'server_status3', sortable : true, renderer : server_status},
-			{header : 'server_status4', id : 'server_status4', dataIndex : 'server_status4', sortable : true, renderer : server_status},
-			{header : 'check_time', id : 'check_time', dataIndex : 'check_time', sortable : true, xtype: 'datecolumn', format : 'Y-m-d H:i:s', width: 160}			
+			{header : 'server_status3', id : 'server_status3', dataIndex : 'server_status3', sortable : true, renderer : server_status, hidden: true},
+			{header : 'server_status4', id : 'server_status4', dataIndex : 'server_status4', sortable : true, renderer : server_status, hidden: true},
+			{header : 'total_disk_space', id : 'total_disk_space', dataIndex : 'total_disk_space', sortable : true},
+			{header : 'free_disk_space', id : 'free_disk_space', dataIndex : 'free_disk_space', sortable : true},
+			{header : 'check_time', id : 'check_time', dataIndex : 'check_time', sortable : true, xtype: 'datecolumn', format : 'Y-m-d H:i:s', width: 200}			
 		]);
 		
 		var server_page = new Ext.PagingToolbar({
@@ -102,9 +106,15 @@ var msJS = function(){
 				forceFit:true, sortAscText:'升序',sortDescText:'降序',columnsText:'可选列'
 			},
 			tbar: [{
+				id: 'sync_ms_db',
 				text: '同步数据库',
 				iconCls: 'sync',
 				handler: self.sync_ms_db
+			},'-',{
+				id: 'sync_ms_status',
+				text: '同步MS状态',				
+				iconCls: 'sync',
+				handler: self.sync_ms_status
 			},'-',{
 				id: 'refresh_ms_list',
 				text: '刷新MS列表',				
@@ -183,6 +193,20 @@ var msJS = function(){
 	{
 		Ext.Ajax.request({
 			url: '/sync_ms_db/' + self.plat + '/',			
+			params: '',
+			success: function(response) {
+				Ext.MessageBox.alert('成功', response.responseText);	
+			},
+			failure: function(response){
+				Ext.MessageBox.alert('失败', Ext.encode(response));
+			}			
+		});
+	}
+	
+	this.sync_ms_status = function() 
+	{
+		Ext.Ajax.request({
+			url: '/sync_ms_status/' + self.plat + '/',			
 			params: '',
 			success: function(response) {
 				Ext.MessageBox.alert('成功', response.responseText);	

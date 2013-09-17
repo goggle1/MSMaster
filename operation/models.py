@@ -2,6 +2,10 @@
 from django.db import models
 # Create your models here.
 
+
+STATUS_DISPATCHED   = 0
+STATUS_STARTED      = 1
+STATUS_DONE         = 2
                 
 class mobile_operation(models.Model):
     # config    

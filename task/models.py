@@ -7,12 +7,12 @@ class mobile_task(models.Model):
     hash            = models.CharField(max_length = 40, primary_key = True, verbose_name = u"hash")
     online_time     = models.DateTimeField(null = True, auto_now_add = False, verbose_name = u"online_time")   
     is_valid        = models.IntegerField(blank = False, null = True,  verbose_name = u"is_valid")    
-    hot             = models.IntegerField(blank = False, null = True,  verbose_name = u"hot")    
+    hot             = models.BigIntegerField(blank = False, null = True,  verbose_name = u"hot")    
     cold1           = models.FloatField(blank = False, null = True,  verbose_name = u"cold1")
     cold2           = models.FloatField(blank = False, null = True,  verbose_name = u"cold2")
     cold3           = models.FloatField(blank = False, null = True,  verbose_name = u"cold3")
     last_hit_time   = models.DateTimeField(null = True, auto_now_add = False, verbose_name = u"last_hit_time")
-    total_hits_num  = models.IntegerField(blank = False, null = True,  verbose_name = u"total_hits_num") 
+    total_hits_num  = models.BigIntegerField(blank = False, null = True,  verbose_name = u"total_hits_num") 
     
     class Meta:
         db_table    = "mobile_task"
@@ -36,12 +36,12 @@ class pc_task(models.Model):
     hash            = models.CharField(max_length = 40, primary_key = True, verbose_name = u"hash")
     online_time     = models.DateTimeField(null = True, auto_now_add = False, verbose_name = u"online_time")  
     is_valid        = models.IntegerField(blank = False, null = True,  verbose_name = u"is_valid")    
-    hot             = models.FloatField(blank = False, null = True,  verbose_name = u"hot")    
+    hot             = models.BigIntegerField(blank = False, null = True,  verbose_name = u"hot")    
     cold1           = models.FloatField(blank = False, null = True,  verbose_name = u"cold1")
     cold2           = models.FloatField(blank = False, null = True,  verbose_name = u"cold2")
     cold3           = models.FloatField(blank = False, null = True,  verbose_name = u"cold3")
     last_hit_time   = models.DateTimeField(null = True, auto_now_add = False, verbose_name = u"last_hit_time")
-    total_hits_num  = models.IntegerField(blank = False, null = True,  verbose_name = u"total_hits_num") 
+    total_hits_num  = models.BigIntegerField(blank = False, null = True,  verbose_name = u"total_hits_num") 
     
     class Meta:
         db_table    = "pc_task"

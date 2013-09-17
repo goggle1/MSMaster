@@ -4,17 +4,33 @@ from django.http import HttpResponse
 from django.shortcuts import render_to_response,RequestContext
 import json
 import models
-import sys
-import re
-import MySQLdb
 import time
 import string
 #import MS.models
+from DB.db import *
 from MS.models import mobile_ms_server
 from MS.models import pc_ms_server
-from operation.models import mobile_operation
-from operation.models import pc_operation
+from operation.views import get_operation_record
+from operation.views import get_operation_record_undone
+from operation.views import create_operation_record
+from task.views import get_task_local
 import threading
+from ms import *
+                                           
+def room_insert(platform, v_room_id, v_room_name, v_is_valid, v_check_time):
+    if(platform == 'mobile'): 
+        hash_local = models.mobile_room(room_id = v_room_id,                    \
+                                        room_name = v_room_name,                \
+                                        is_valid = v_is_valid,                  \
+                                        check_time = v_check_time)
+        hash_local.save()
+    elif(platform == 'pc'):
+        hash_local = models.pc_room(room_id = v_room_id,                    \
+                                        room_name = v_room_name,                \
+                                        is_valid = v_is_valid,                  \
+                                        check_time = v_check_time)
+        hash_local.save()
+        
 
 def get_room_local(platform):
     rooms = []
@@ -24,29 +40,17 @@ def get_room_local(platform):
         rooms = models.pc_room.objects.all()
 
     return rooms
-
-class DB_MYSQL :
-    conn = None
-    cur = None
-    def connect(self, host, port, user, passwd, db, charset='utf8') :
-        self.conn = MySQLdb.connect(host, user, passwd, db, port, charset='utf8')
-        self.cur  = self.conn.cursor()
-    def execute(self, sql):           
-        self.cur.execute(sql)
-    def close(self):
-        self.cur.close()
-        self.conn.close()
         
         
 def get_room_macross(platform):
     room_list = []
     sql = ""
     
-    reload(sys)
-    sys.setdefaultencoding('utf8')
+    #reload(sys)
+    #sys.setdefaultencoding('utf8')
     
     db = DB_MYSQL()
-    db.connect("192.168.8.101", 3317, "public", "funshion", "macross")
+    db.connect(DB_CONFIG.host, DB_CONFIG.port, DB_CONFIG.user, DB_CONFIG.password, DB_CONFIG.db)
     if(platform == "mobile"):
         sql = "select l.room_id, l.room_name, l.is_valid from fs_server s, fs_server_location l where s.ml_room_id=l.room_id and s.is_valid=1 and l.is_valid=1 group by l.room_id order by l.room_id"
     elif(platform == "pc"):
@@ -134,7 +138,7 @@ def show_room_list(request, platform):
             output += '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s<br>' \
             % (str(ms.server_id), str(ms.server_name), str(ms.server_ip), str(ms.server_port), \
                str(ms.controll_ip), str(ms.controll_port), str(ms.task_number), str(ms.server_status1), \
-               str(ms.server_status2), str(ms.server_status3), str(ms.server_status4), str(ms.check_time))
+               str(ms.server_status2), str(ms.total_disk_space), str(ms.free_disk_space), str(ms.check_time))
     return HttpResponse(output)
 
 
@@ -145,32 +149,12 @@ def room_list_find(room_list, room_id):
     return None
 
 
-def get_operation_record(platform, the_type, the_name):
-    records = []
-    if(platform == 'mobile'):
-        records = mobile_operation.objects.filter(type=the_type, name=the_name)
-    elif(platform == 'pc'):
-        records = pc_operation.objects.filter(type=the_type, name=the_name)
-    return records
-
-
-def create_operation_record(platform, the_type, the_name, the_dispatch_time):
-    record = None    
-    if(platform == 'mobile'):
-        record = mobile_operation(type=the_type, name=the_name, dispatch_time=the_dispatch_time, status=0)
-        record.save()
-    elif(platform == 'pc'):
-        record = pc_operation(type=the_type, name=the_name, dispatch_time=the_dispatch_time, status=0)
-        record.save()
-    return record
-
-
-class MyThread(threading.Thread):
+class Thread_SYNC_MS_DB(threading.Thread):
     platform = ''
     record = None
     
     def __init__(self, the_platform, the_record):
-        super(MyThread, self).__init__()        
+        super(Thread_SYNC_MS_DB, self).__init__()        
         self.platform = the_platform
         self.record = the_record
         
@@ -199,33 +183,13 @@ class MyThread(threading.Thread):
             room_local = room_list_find(room_list_local, room_macross['room_id'])
             print room_macross['room_id'], room_macross['room_name'], room_macross['is_valid']
             if(room_local == None):
-                if(self.platform == 'mobile'):
-                    room_local = models.mobile_room(room_id           = room_macross['room_id'],        \
-                                           room_name          = room_macross['room_name'],      \
-                                           is_valid           = room_macross['is_valid'],       \
-                                           task_number        = 0,                              \
-                                           room_status        = 0,                              \
-                                           num_dispatching    = 0,                              \
-                                           num_deleting       = 0,                              \
-                                           operation_time     = begin_time                        \
-                                           )
-                elif(self.platform == 'pc'):
-                    room_local = models.pc_room(room_id           = room_macross['room_id'],        \
-                                           room_name          = room_macross['room_name'],      \
-                                           is_valid           = room_macross['is_valid'],       \
-                                           task_number        = 0,                              \
-                                           room_status        = 0,                              \
-                                           num_dispatching    = 0,                              \
-                                           num_deleting       = 0,                              \
-                                           operation_time     = begin_time                        \
-                                           )
-                room_local.save()
+                room_insert(self.platform, room_macross['room_id'], room_macross['room_name'], room_macross['is_valid'], begin_time)                
                 num_insert += 1
             else:
                 room_local.room_id           = room_macross['room_id']
                 room_local.room_name         = room_macross['room_name']
                 room_local.is_valid          = room_macross['is_valid']
-                room_local.operation_time    = begin_time
+                room_local.check_time        = begin_time
                 room_local.save()
                 num_update += 1
                 
@@ -246,8 +210,79 @@ class MyThread(threading.Thread):
         output += 'num_delete: %d' % (num_delete)
         self.record.memo = output
         self.record.save()
+     
         
+class Thread_ADD_HOT_TASKS(threading.Thread):
+    platform = ''
+    record = None
+    
+    def __init__(self, the_platform, the_record):
+        super(Thread_ADD_HOT_TASKS, self).__init__()        
+        self.platform = the_platform
+        self.record = the_record
+        
+        
+    def run(self):
+        now_time = time.localtime(time.time())        
+        begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+        self.record.begin_time = begin_time
+        self.record.status = 1
+        self.record.save()
+    
+        room_id = self.record.name
+        num_dispatching = self.record.memo
+        total_num = string.atoi(num_dispatching)
+        
+        ms_list = get_ms_list_in_room(self.platform, room_id)
+        if(len(ms_list) <= 0):
+            now_time = time.localtime(time.time())        
+            end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+            output = 'now: %s, ' % (end_time)
+            output += 'room_id: %s, ' % (room_id)
+            output += 'num_dispatching: %s, ' % (num_dispatching)
+            output += 'ms num: %d, ' % (len(ms_list))
+            self.record.end_time = end_time
+            self.record.status = 2        
+            self.record.memo = output
+            self.record.save()
+            return False
+        
+        print 'ms_list num: %d' % (len(ms_list))
+        
+        ms_all = MS_ALL(self.platform, ms_list)
+        ms_all.get_tasks()
             
+        num = 0
+        result = False
+        tasks = get_task_local(self.platform) 
+        print 'tasks count: %d' % (tasks.count())
+        hot_tasks = tasks.order_by('-hot')
+        print 'hot_tasks count: %d' % (hot_tasks.count())
+        for task in hot_tasks:
+            if(ms_all.find_task(task.hash) == False):
+                print '%s not found' % (task.hash)
+                result = ms_all.dispatch_task(task.hash)
+                if(result == False):
+                    break
+                num += 1
+                if(num >= total_num):
+                    break
+            else:
+                print '%s found' % (task.hash)
+    
+        now_time = time.localtime(time.time())        
+        end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+        output = 'now: %s, ' % (end_time)
+        output += 'room_id: %s, ' % (room_id)
+        output += 'num_dispatching: %s, ' % (num_dispatching)
+        output += 'ms num: %d, ' % (len(ms_list))
+        output += 'task num: %d, ' % (num)
+        print output
+        self.record.end_time = end_time
+        self.record.status = 2        
+        self.record.memo = output
+        self.record.save()
+       
             
 def sync_room_db(request, platform):  
     print 'sync_room_db'
@@ -262,13 +297,13 @@ def sync_room_db(request, platform):
     operation['name'] = today
         
     output = ''
-    records = get_operation_record(platform, operation['type'], operation['name'])
+    records = get_operation_record_undone(platform, operation['type'], operation['name'])
     if(len(records) == 0):
         record = create_operation_record(platform, operation['type'], operation['name'], dispatch_time)
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.
-            t = MyThread(platform, record)            
+            t = Thread_SYNC_MS_DB(platform, record)            
             t.start()
     else:
         for record in records:
@@ -277,21 +312,38 @@ def sync_room_db(request, platform):
     return HttpResponse(output)     
 
 
-def modify_room(request, platform):
-    print 'modify_room'
+
+def add_hot_tasks(request, platform):
+    print 'add_hot_tasks'
     print request.REQUEST
     
-    rooms = get_room_local(platform)
+    room_id = request.REQUEST['room_id']
+    num_dispatching = request.REQUEST['num_dispatching']
+    #num_deleting = request.REQUEST['num_deleting']
+    print 'room_id: %s, num_dispatching: %s' % (room_id, num_dispatching)
+   
+    now_time = time.localtime(time.time())    
+    dispatch_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
     
-    the_room_id = request.REQUEST['room_id']
-    the_num_dispatching = request.REQUEST['num_dispatching']
-    the_num_deleting = request.REQUEST['num_deleting']
+    operation = {}
+    operation['type'] = 'add_hot_tasks'
+    operation['name'] = room_id
+    operation['memo'] = num_dispatching
+        
+    output = ''
+    records = get_operation_record_undone(platform, operation['type'], operation['name'])
+    if(len(records) == 0):
+        record = create_operation_record(platform, operation['type'], operation['name'], dispatch_time, operation['memo'])
+        if(record != None):
+            output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
+            # start thread.
+            t = Thread_ADD_HOT_TASKS(platform, record)            
+            t.start()
+    else:
+        for record in records:
+            output += 'operation exist, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
     
-    now_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
-    rooms.filter(room_id=the_room_id).update(num_dispatching=the_num_dispatching, num_deleting=the_num_deleting, operation_time=now_time)
-    
-    #{"success":true,"data":"\u201cSDYD-25\u201d\u4fee\u6539\u6210\u529f","createTime":"2013-09-11 14:16:56"}
-    return_datas = {'success':True, 'data': u'修改成功', "operationTime":"2013-09-11 14:16:56"}    
-    return HttpResponse(json.dumps(return_datas))
+    return_datas = {'success':True, 'data':output, "dispatch_time":dispatch_time}    
+    return HttpResponse(json.dumps(return_datas))   
 
     

@@ -7,13 +7,22 @@ import models
 import string
 import time
 import sys
-import MySQLdb
+#from DB.db import DB_MYSQL
+#from DB.db import DB_CONFIG
+from DB.db import *
 #import operation.views
 #from operation.views import *
 from operation.views import get_operation_record
+from operation.views import get_operation_record_undone
 from operation.views import create_operation_record
 import threading
 import datetime
+
+def day_diff(date1, date2):
+    d1 = datetime.datetime(string.atoi(date1[0:4]), string.atoi(date1[5:7]), string.atoi(date1[8:10]))
+    d2 = datetime.datetime(string.atoi(date2[0:4]), string.atoi(date2[5:7]), string.atoi(date2[8:10]))
+    return (d1-d2).days
+
 
 def task_insert(platform, hash_id, v_online_time, v_is_valid, v_hot, v_cold1, v_cold2, v_cold3, v_last_hit_time, v_total_hits_num):
     if(platform == 'mobile'):
@@ -50,19 +59,6 @@ def get_task_local(platform):
     elif(platform == 'pc'):
         ms_list = models.pc_task.objects.all()    
     return ms_list
-
-
-class DB_MYSQL :
-    conn = None
-    cur = None
-    def connect(self, host, port, user, passwd, db, charset='utf8') :
-        self.conn = MySQLdb.connect(host, user, passwd, db, port, charset='utf8')
-        self.cur  = self.conn.cursor()
-    def execute(self, sql):           
-        self.cur.execute(sql)
-    def close(self):
-        self.cur.close()
-        self.conn.close()
         
 
 def get_task_list(request, platform):
@@ -165,11 +161,11 @@ def get_task_macross(platform):
     ms_list = []
     sql = ""
     
-    reload(sys)
-    sys.setdefaultencoding('utf8')
+    #reload(sys)
+    #sys.setdefaultencoding('utf8')
     
     db = DB_MYSQL()
-    db.connect("192.168.8.101", 3317, "public", "funshion", "macross")
+    db.connect(DB_CONFIG.host, DB_CONFIG.port, DB_CONFIG.user, DB_CONFIG.password, DB_CONFIG.db)
     if(platform == 'mobile'):
         sql = "select dat_hash, create_time from fs_mobile_dat"
     elif(platform == 'pc'):
@@ -239,11 +235,13 @@ class Thread_SYNC(threading.Thread):
                 print 'insert'
                 task_insert(self.platform, hash_macross['hash'], create_time, 1, 0, 0.0, 0.0, 0.0, create_time, 0)                
                 num_insert += 1
-            else:
-                print 'update'
+            else:                
                 if(hash_local.online_time != create_time):
+                    print 'update, online_time'
                     hash_local.online_time = create_time
-                    hash_local.save()            
+                    hash_local.save()   
+                else:
+                    print 'update, do nothing'         
                 num_update += 1
                 
         #for hash_local in hash_list_local:
@@ -281,7 +279,7 @@ def sync_hash_db(request, platform):
     operation['name'] = today
         
     output = ''
-    records = get_operation_record(platform, operation['type'], operation['name'])
+    records = get_operation_record_undone(platform, operation['type'], operation['name'])
     if(len(records) == 0):
         record = create_operation_record(platform, operation['type'], operation['name'], dispatch_time)
         if(record != None):
@@ -312,9 +310,10 @@ class Thread_UPLOAD(threading.Thread):
     def add_hits_num(self, hits_date):
         upload_file = ""
         if(self.platform == 'mobile'):
-            upload_file = "/home/xiongming/data_analysis/topdata/mo/logdata/logdata_%s_hashid_sort.result" % (hits_date)
+            #upload_file = "/home/xiongming/data_analysis/topdata/mo/logdata/logdata_%s_hashid_sort.result" % (hits_date)
+            upload_file = HITS_FILE.template_mobile % (hits_date)
         elif(self.platform == 'pc'):
-            upload_file = "/home/xiongming/data_analysis/topdata/pc/logdata/logdata_%s_hashid_sort.result" % (hits_date)
+            upload_file = HITS_FILE.template_mobile % (hits_date)
        
         hits_time = '%s-%s-%sT12:00:00+00:00' % (hits_date[0:4], hits_date[4:6], hits_date[6:8])  
         
@@ -325,17 +324,18 @@ class Thread_UPLOAD(threading.Thread):
             return False
         
         hash_list_local = get_task_local(self.platform)      
-            
+        
+        #'''    
         content = hits_file.readlines()
         for line in content:
             items = line.split(' ')
             if(len(items) >= 2):
                 hits_num = items[0].strip()
                 hash_id = items[1].strip()
-                print '%s, %s' % (hits_num, hash_id)
+                #print '%s, %s' % (hits_num, hash_id)
                 task_list = hash_list_local.filter(hash=hash_id)
                 if(len(task_list) > 0):
-                    print 'update' 
+                    #print 'update' 
                     hash_local = task_list[0]
                     hash_local.hot += string.atoi(hits_num)
                     hash_local.last_hit_time = hits_time
@@ -349,24 +349,36 @@ class Thread_UPLOAD(threading.Thread):
                     task_insert(self.platform, hash_id, '2000-01-01T00:00:00+00:00', 1, v_hits_num, 0.0, 0.0, 0.0, hits_time, v_hits_num)
                     self.num_insert += 1
             line_num += 1
-            if(line_num > 55):
-                break
-        hits_file.close()        
+            #if(line_num > 55):
+            #    break
+        hits_file.close()
+        #'''
+        
+        # calc cold1
+        hash_list_cold = hash_list_local.filter(last_hit_time__lte = hits_time)  
+        print 'hash_list_cold count %d' % (hash_list_cold.count())
+        for task in hash_list_cold:
+            task.cold1 = day_diff(str(task.last_hit_time), hits_time)
+            #print '%s cold1: %f' % (task.hash, task.cold1)
+            task.save()
+            
         return True
+    
     
     def sub_hits_num(self, previous_day):
         # check if uploaded
         #     true: sub it,
         #     false: do nothing.
-        operation_list = get_operation_record(self.platform, previous_day)
+        operation_list = get_operation_record(self.platform, 'upload_hits_num', previous_day)
         if(len(operation_list) <= 0):
+            print 'sub_hits_num %s not uploaded' % (previous_day)
             return True;
         
         upload_file = ""
         if(self.platform == 'mobile'):
-            upload_file = "/home/xiongming/data_analysis/topdata/mo/logdata/logdata_%s_hashid_sort.result" % (previous_day)
+            upload_file = HITS_FILE.template_mobile % (previous_day)
         elif(self.platform == 'pc'):
-            upload_file = "/home/xiongming/data_analysis/topdata/pc/logdata/logdata_%s_hashid_sort.result" % (previous_day)
+            upload_file = HITS_FILE.template_pc % (previous_day)
        
         line_num = 0
         try:
@@ -397,8 +409,8 @@ class Thread_UPLOAD(threading.Thread):
                     print 'insert -' 
                     self.num_insert2 += 1
             line_num += 1
-            if(line_num > 55):
-                break
+            #if(line_num > 55):
+            #    break
         hits_file.close()
         return True
     
@@ -425,6 +437,7 @@ class Thread_UPLOAD(threading.Thread):
             return False
        
         result = self.add_hits_num(hits_date)
+        #result = True
         if(result == False):
             now_time = time.localtime(time.time())        
             end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
@@ -439,7 +452,7 @@ class Thread_UPLOAD(threading.Thread):
                  
         #last = datetime.date(datetime.date.today().year,datetime.date.today().month,1)-datetime.timedelta(1)
         #print last
-        day_delta = 3
+        day_delta = HITS_FILE.hot_period
         num_year = string.atoi(hits_date[0:4])
         num_mon = string.atoi(hits_date[4:6])
         num_day = string.atoi(hits_date[6:8])
@@ -510,11 +523,12 @@ def show_task_list(request, platform):
     hashs = request.REQUEST['hashs']    
     hash_list = hashs.split(',')
     
-    reload(sys)
-    sys.setdefaultencoding('utf8')
+    #reload(sys)
+    #sys.setdefaultencoding('utf8')
     
     db = DB_MYSQL()
-    db.connect("192.168.8.101", 3317, "public", "funshion", "macross")
+    #db.connect("192.168.8.101", 3317, "public", "funshion", "macross")
+    db.connect(DB_CONFIG.host, DB_CONFIG.port, DB_CONFIG.user, DB_CONFIG.password, DB_CONFIG.db)
     if(platform == 'mobile'):
         sql = 'select dat_hash, cid, serialid, media_id, dat_name from fs_mobile_dat where dat_hash='
     elif(platform == 'pc'):

@@ -10,20 +10,22 @@ class mobile_ms_server(models.Model):
     server_port     = models.IntegerField(blank = False, verbose_name = u"server_port")
     controll_ip     = models.IPAddressField(verbose_name = u"controll_ip")
     controll_port   = models.IntegerField(blank = False, verbose_name = u"controll_port")    
-    room_id         = models.IntegerField(blank = False, verbose_name = u"room_id")
+    room_id         = models.IntegerField(blank = False, null = True, verbose_name = u"room_id")
     room_name       = models.CharField(null = True, max_length=32, verbose_name = u"room_name")
     server_version  = models.CharField(null = True, max_length=32, verbose_name = u"server_version")
     protocol_version= models.CharField(null = True, max_length=32, verbose_name = u"protocol_version")        
     identity_file   = models.CharField(null = True, max_length=32, verbose_name = u"identity_file")
     password        = models.CharField(null = True, max_length=32, verbose_name = u"password")    
     # status 
-    is_valid        = models.IntegerField(blank = False, verbose_name = u"is_valid") 
-    task_number     = models.IntegerField(blank = False, verbose_name = u"task_number")    
+    is_valid        = models.IntegerField(blank = False, null = True, verbose_name = u"is_valid") 
+    task_number     = models.IntegerField(blank = False, null = True, verbose_name = u"task_number")    
     server_status1  = models.IntegerField(blank = False, null = True, verbose_name = u"server_status1")
     server_status2  = models.IntegerField(blank = False, null = True, verbose_name = u"server_status2")
     server_status3  = models.IntegerField(blank = False, null = True, verbose_name = u"server_status3")
     server_status4  = models.IntegerField(blank = False, null = True, verbose_name = u"server_status4")
-    check_time      = models.DateTimeField(auto_now_add=True, verbose_name = u"check_time")
+    total_disk_space= models.BigIntegerField(blank = False, null = True, verbose_name = u"total_disk_space")
+    free_disk_space = models.BigIntegerField(blank = False, null = True, verbose_name = u"free_disk_space")
+    check_time      = models.DateTimeField(auto_now_add=True, null = True, verbose_name = u"check_time")
   
     class Meta:
         db_table    = "mobile_ms_server" 
@@ -48,6 +50,8 @@ class mobile_ms_server(models.Model):
         dic['server_status2'] = str(self.server_status2)
         dic['server_status3'] = str(self.server_status3)
         dic['server_status4'] = str(self.server_status4)
+        dic['total_disk_space'] = str(self.total_disk_space)
+        dic['free_disk_space'] = str(self.free_disk_space)
         dic['check_time'] = str(self.check_time)
         return dic
   
@@ -60,20 +64,22 @@ class pc_ms_server(models.Model):
     server_port     = models.IntegerField(blank = False, verbose_name = u"server_port")
     controll_ip     = models.IPAddressField(verbose_name = u"controll_ip")
     controll_port   = models.IntegerField(blank = False, verbose_name = u"controll_port")    
-    room_id         = models.IntegerField(blank = False, verbose_name = u"room_id")
+    room_id         = models.IntegerField(blank = False, null = True, verbose_name = u"room_id")
     room_name       = models.CharField(null = True, max_length=32, verbose_name = u"room_name")
     server_version  = models.CharField(null = True, max_length=32, verbose_name = u"server_version")
     protocol_version= models.CharField(null = True, max_length=32, verbose_name = u"protocol_version")        
     identity_file   = models.CharField(null = True, max_length=32, verbose_name = u"identity_file")
     password        = models.CharField(null = True, max_length=32, verbose_name = u"password")    
     # status 
-    is_valid        = models.IntegerField(blank = False, verbose_name = u"is_valid") 
-    task_number     = models.IntegerField(blank = False, verbose_name = u"task_number")    
+    is_valid        = models.IntegerField(blank = False, null = True, verbose_name = u"is_valid") 
+    task_number     = models.IntegerField(blank = False, null = True, verbose_name = u"task_number")    
     server_status1  = models.IntegerField(blank = False, null = True, verbose_name = u"server_status1")
     server_status2  = models.IntegerField(blank = False, null = True, verbose_name = u"server_status2")
     server_status3  = models.IntegerField(blank = False, null = True, verbose_name = u"server_status3")
     server_status4  = models.IntegerField(blank = False, null = True, verbose_name = u"server_status4")
-    check_time      = models.DateTimeField(auto_now_add=True, verbose_name = u"check_time")
+    total_disk_space= models.BigIntegerField(blank = False, null = True, verbose_name = u"total_disk_space")
+    free_disk_space = models.BigIntegerField(blank = False, null = True, verbose_name = u"free_disk_space")
+    check_time      = models.DateTimeField(auto_now_add=True, null = True, verbose_name = u"check_time")
     
     class Meta:
         db_table    = "pc_ms_server" 
@@ -98,6 +104,8 @@ class pc_ms_server(models.Model):
         dic['server_status2'] = str(self.server_status2)
         dic['server_status3'] = str(self.server_status3)
         dic['server_status4'] = str(self.server_status4)
+        dic['total_disk_space'] = str(self.total_disk_space)
+        dic['free_disk_space'] = str(self.free_disk_space)
         dic['check_time'] = str(self.check_time)
         return dic
 

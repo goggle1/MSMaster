@@ -2,33 +2,38 @@
 # Create your views here.
 from django.http import HttpResponse
 from django.shortcuts import render_to_response,RequestContext
-import urllib2 
 import json
 import models
-import sys
-import re
-import MySQLdb
-import time
 import string
 
-def get_operation_record(platform, the_type, the_name):
+def get_operation_record(platform, v_type, v_name):
     records = []
     if(platform == 'mobile'):
-        records = models.mobile_operation.objects.filter(type=the_type, name=the_name)
+        records = models.mobile_operation.objects.filter(type=v_type, name=v_name)
     elif(platform == 'pc'):
-        records = models.pc_operation.objects.filter(type=the_type, name=the_name)
+        records = models.pc_operation.objects.filter(type=v_type, name=v_name)
     return records
 
 
-def create_operation_record(platform, the_type, the_name, the_dispatch_time):
+def get_operation_record_undone(platform, v_type, v_name):
+    records = []
+    if(platform == 'mobile'):
+        records = models.mobile_operation.objects.filter(type=v_type, name=v_name).exclude(status=models.STATUS_DONE)
+    elif(platform == 'pc'):
+        records = models.pc_operation.objects.filter(type=v_type, name=v_name).exclude(status=models.STATUS_DONE)
+    return records
+
+
+def create_operation_record(platform, v_type, v_name, v_dispatch_time, v_memo=''):
     record = None    
     if(platform == 'mobile'):
-        record = models.mobile_operation(type=the_type, name=the_name, dispatch_time=the_dispatch_time, status=0)
+        record = models.mobile_operation(type=v_type, name=v_name, dispatch_time=v_dispatch_time, status=models.STATUS_DISPATCHED, memo=v_memo)
         record.save()
     elif(platform == 'pc'):
-        record = models.pc_operation(type=the_type, name=the_name, dispatch_time=the_dispatch_time, status=0)
+        record = models.pc_operation(type=v_type, name=v_name, dispatch_time=v_dispatch_time, status=models.STATUS_DISPATCHED, memo=v_memo)
         record.save()
     return record
+
 
 def get_operation_local(platform):
     operation_list = []

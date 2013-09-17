@@ -27,11 +27,12 @@ var roomJS = function(){
 				{name: 'room_id', type: 'int'},
 				'room_name',
 				'is_valid',
-				'task_number',
-				'room_status',
-				'num_dispatching',
-				'num_deleting',
-				'operation_time'
+				//'task_number',
+				//'room_status',
+				//'num_dispatching',
+				//'num_deleting',
+				//'operation_time'
+				'check_time'
 			]
 		});
 
@@ -43,11 +44,12 @@ var roomJS = function(){
 			{header : 'room_id', id : 'room_id', dataIndex : 'room_id', sortable : true},
 			{header : 'room_name', id : 'room_name', dataIndex : 'room_name', sortable : true},
 			{header : 'is_valid', id : 'is_valid', dataIndex : 'is_valid', sortable : true},
-			{header : 'task_number', id : 'task_number', dataIndex : 'task_number', sortable : true},
-			{header : 'room_status', id : 'room_status', dataIndex : 'room_status', sortable : true},
-			{header : 'num_dispatching', id : 'num_dispatching', dataIndex : 'num_dispatching', sortable : true},
-			{header : 'num_deleting', id : 'num_deleting', dataIndex : 'num_deleting', sortable : true},	
-			{header : 'operation_time', id : 'operation_time', dataIndex : 'operation_time', sortable : true, xtype: 'datecolumn', format : 'Y-m-d H:i:s', width: 160}	
+			//{header : 'task_number', id : 'task_number', dataIndex : 'task_number', sortable : true},
+			//{header : 'room_status', id : 'room_status', dataIndex : 'room_status', sortable : true},
+			//{header : 'num_dispatching', id : 'num_dispatching', dataIndex : 'num_dispatching', sortable : true},
+			//{header : 'num_deleting', id : 'num_deleting', dataIndex : 'num_deleting', sortable : true},	
+			//{header : 'operation_time', id : 'operation_time', dataIndex : 'operation_time', sortable : true, xtype: 'datecolumn', format : 'Y-m-d H:i:s', width: 160}	
+			{header : 'check_time', id : 'check_time', dataIndex : 'check_time', sortable : true, xtype: 'datecolumn', format : 'Y-m-d H:i:s', width: 200}	
 		]);
 	
 		var room_page = new Ext.PagingToolbar({
@@ -94,13 +96,21 @@ var roomJS = function(){
 				iconCls: 'refresh',
 				handler: self.refresh_room_list
 			},'-',{				
-				text: '修改机房任务',				
-				iconCls: 'modify',
-				handler: self.modify_room_tasks
+				text: '同步机房状态',				
+				iconCls: 'sync',
+				handler: self.sync_room_status
 			},'-',{				
 				text: '机房详细状态',				
 				iconCls: 'detail',
 				handler: self.show_room_detail
+			},'-',{				
+				text: '分发热门任务',				
+				iconCls: 'modify',
+				handler: self.add_hot_tasks
+			},'-',{				
+				text: '删除冷门任务',				
+				iconCls: 'modify',
+				handler: self.delete_cold_tasks
 			}],
 			bbar: room_page
 		});
@@ -130,6 +140,41 @@ var roomJS = function(){
 	{
 		self.room_store.reload();
 	}
+	
+	this.sync_room_status = function() {
+		var grid = self.room_grid;
+		var t_sm = grid.getSelectionModel();
+
+		//此处为多选行，如果没有选中任意一行时，需要对右键当前行进行选中设置
+		//如果右键当前行不在选中的行中，则移除所选的行，选择当前行
+		var room_ids = []
+		if (t_sm.getSelected()) 
+		{
+			var recs = t_sm.getSelections();
+			for (var i = 0; i < recs.length; i++) 
+			{
+				room_ids.push(recs[i].get('room_id'));
+			}
+		}
+		else
+		{
+			return true;
+		}
+		//console.log(room_ids);
+
+		Ext.Ajax.request({
+			url: '/sync_room_status/' + self.plat + '/',				
+			params: 'ids=' + room_ids,
+			success: function(response) {
+				Ext.MessageBox.alert('成功', response.responseText);	
+			},
+			failure: function(response){
+				Ext.MessageBox.alert('失败', Ext.encode(response));
+			}
+			//timeout: (this.timeout*1000);
+		});
+
+	};
 
 	this.show_room_detail = function() {
 		var grid = self.room_grid;
@@ -181,7 +226,7 @@ var roomJS = function(){
 
 	};
 	
-	this.modify_room_tasks = function(){
+	this.add_hot_tasks = function(){
 		var grid = self.room_grid;
 		var sm = grid.getSelectionModel();		
 		if(!sm.getSelected()){
@@ -192,19 +237,21 @@ var roomJS = function(){
 		var room_id = record.get('room_id');		
 		var room_name = record.get('room_name');
 		var is_valid = record.get('is_valid');
-		var task_number = record.get('task_number');
-		var room_status = record.get('room_status');
-		var num_dispatching = record.get('num_dispatching');
-		var num_deleting = record.get('num_deleting');
-		var operation_time = record.get('operation_time');
+		//var task_number = record.get('task_number');
+		//var room_status = record.get('room_status');
+		//var num_dispatching = record.get('num_dispatching');
+		var num_dispatching = 0
+		//var num_deleting = record.get('num_deleting');
+		//var operation_time = record.get('operation_time');
+		var check_time = record.get('check_time');
 		//避免win的重复生成
-		if(Ext.get("modify_room_tasks_win_" + self.plat)){
-			Ext.getCmp("modify_room_tasks_win_" + self.plat).show();
+		if(Ext.get("add_hot_tasks_win_" + self.plat)){
+			Ext.getCmp("add_hot_tasks_win_" + self.plat).show();
 			return true;
 		}
 		
-		var modify_room_form = new Ext.FormPanel({
-			id: 'modify_room_form',
+		var add_hot_tasks_form = new Ext.FormPanel({
+			id: 'add_hot_tasks_form',
 			autoWidth: true,//自动调整宽度
 			url:'',
 			frame:true,
@@ -217,8 +264,8 @@ var roomJS = function(){
 				{fieldLabel:'room_id', 		name:'room_id', 	value: room_id, 	disabled:true},
 				{fieldLabel:'room_name', 	name:'room_name', 	value: room_name, 	disabled:true},
 				{fieldLabel:'is_valid', 	name:'is_valid', 	value: is_valid, 	disabled:true},
-				{fieldLabel:'task_number', 	name:'task_number',	value: task_number, disabled:true},
-				{fieldLabel:'room_status', 	name:'room_status',	value: room_status, disabled:true},
+				//{fieldLabel:'task_number', 	name:'task_number',	value: task_number, disabled:true},
+				//{fieldLabel:'room_status', 	name:'room_status',	value: room_status, disabled:true},
 				{fieldLabel:'num_dispatching',	
 					name: 'num_dispatching', 
 					value: num_dispatching, 
@@ -228,32 +275,23 @@ var roomJS = function(){
 					allowBlank:false,
 					blankText:'分发任务数不能为空'
 				},
-				{fieldLabel:'num_deleting',	
-					name: 'num_deleting', 
-					value: num_deleting, 
-					xtype: 'numberfield',
-					minValue: 0,
-					minText: '删除任务数不能小于0',
-					allowBlank:false,
-					blankText:'删除任务数不能为空'
-				},
-				{fieldLabel:'operation_time', 	name:'operation_time', 	value: operation_time, disabled:true}
+				{fieldLabel:'check_time', 	name:'check_time', 	value: check_time, disabled:true}
 			],
 			buttons: [{
 				text: '确定',
-				handler: self.modifyRoomEnd,
+				handler: self.addHotTasksEnd,
 				formBind : true
 			},{
 				text: '取消',
-				handler: function(){Ext.getCmp("modify_room_tasks_win_" + self.plat + room_id).close();}
+				handler: function(){Ext.getCmp("add_hot_tasks_win_" + self.plat).close();}
 			}]
 		});
 		
 		var win = new Ext.Window({
-			width:400,height:300,minWidth:200,minHeight:200,
+			width:400,height:220,minWidth:200,minHeight:100,
 			autoScroll:'auto',
-			title : "修改机房任务",
-			id : "modify_room_tasks_win_" + self.plat,
+			title : "分发热门任务",
+			id : "add_hot_tasks_win_" + self.plat,
 			//renderTo: "ext_room",
 			collapsible: true,
 			modal:false,	//True 表示为当window显示时对其后面的一切内容进行遮罩，false表示为限制对其它UI元素的语法（默认为 false
@@ -261,22 +299,22 @@ var roomJS = function(){
 			layout: 'form',//layout布局方式为form
 			maximizable:true,
 			minimizable:false,
-			items: modify_room_form
+			items: add_hot_tasks_form
 		}).show();
 		
 		
 	};
 	
-	this.modifyRoomEnd = function() {
-		Ext.getCmp('modify_room_form').form.submit({
+	this.addHotTasksEnd = function() {
+		Ext.getCmp("add_hot_tasks_form").form.submit({
 			waitMsg : '正在修改......',
-			url : '/modify_room/' + self.plat + '/',
+			url : '/add_hot_tasks/' + self.plat + '/',
 			method : 'post',
 			timeout : 5000,//5秒超时, 
 			params : '',
 			success : function(form, action) {
 				var result = Ext.util.JSON.decode(action.response.responseText);
-				Ext.getCmp("modify_room_tasks_win_" + self.plat).close();
+				Ext.getCmp("add_hot_tasks_win_" + self.plat).close();
 				Ext.MessageBox.alert('成功', result.data);
 				self.room_store.reload();			//重新载入数据，即根据当前页面的条件，刷新用户页面
 			},
@@ -295,6 +333,116 @@ var roomJS = function(){
 			}
 		});
 	};
+	
+	this.delete_cold_tasks = function(){
+		var grid = self.room_grid;
+		var sm = grid.getSelectionModel();		
+		if(!sm.getSelected()){
+			Ext.MessageBox.alert('提示','未选中记录');
+			return false;
+		}		
+		var record = sm.getSelections()[0];   //获取当前行的记录		
+		var room_id = record.get('room_id');		
+		var room_name = record.get('room_name');
+		var is_valid = record.get('is_valid');
+		//var task_number = record.get('task_number');
+		//var room_status = record.get('room_status');
+		//var num_dispatching = record.get('num_dispatching');		
+		//var num_deleting = record.get('num_deleting');
+		var num_deleting = 0;
+		//var operation_time = record.get('operation_time');
+		var check_time = record.get('check_time');
+		//避免win的重复生成
+		if(Ext.get("delete_cold_tasks_win_" + self.plat)){
+			Ext.getCmp("delete_cold_tasks_win_" + self.plat).show();
+			return true;
+		}
+		
+		var delete_cold_tasks_form = new Ext.FormPanel({
+			id: 'delete_cold_tasks_form',
+			autoWidth: true,//自动调整宽度
+			url:'',
+			frame:true,
+			monitorValid : true,
+			bodyStyle:'padding:5px 5px 0',
+			labelWidth:150,
+			defaults:{xtype:'textfield',width:200},
+			items: [
+				{fieldLabel:'room_id', 		name:'room_id', 	value: room_id, 	hidden:true},
+				{fieldLabel:'room_id', 		name:'room_id', 	value: room_id, 	disabled:true},
+				{fieldLabel:'room_name', 	name:'room_name', 	value: room_name, 	disabled:true},
+				{fieldLabel:'is_valid', 	name:'is_valid', 	value: is_valid, 	disabled:true},
+				//{fieldLabel:'task_number', 	name:'task_number',	value: task_number, disabled:true},
+				//{fieldLabel:'room_status', 	name:'room_status',	value: room_status, disabled:true},
+				{fieldLabel:'num_deleting',	
+					name: 'num_deleting', 
+					value: num_deleting, 
+					xtype: 'numberfield',
+					minValue: 0,
+					minText: '删除任务数不能小于0',
+					allowBlank: false,
+					blankText: '删除任务数不能为空'
+				},
+				{fieldLabel:'check_time', 	name:'check_time', 	value: check_time, disabled:true}
+			],
+			buttons: [{
+				text: '确定',
+				handler: self.deleteColdTasksEnd,
+				formBind : true
+			},{
+				text: '取消',
+				handler: function(){Ext.getCmp("delete_cold_tasks_win_" + self.plat).close();}
+			}]
+		});
+		
+		var win = new Ext.Window({
+			width:400,height:300,minWidth:200,minHeight:200,
+			autoScroll:'auto',
+			title : "删除冷门任务",
+			id : "delete_cold_tasks_win_" + self.plat,
+			//renderTo: "ext_room",
+			collapsible: true,
+			modal:false,	//True 表示为当window显示时对其后面的一切内容进行遮罩，false表示为限制对其它UI元素的语法（默认为 false
+			//所谓布局就是指容器组件中子元素的分布，排列组合方式
+			layout: 'form',//layout布局方式为form
+			maximizable:true,
+			minimizable:false,
+			items: delete_cold_tasks_form
+		}).show();
+		
+		
+	};
+	
+	this.deleteColdTasksEnd = function() {
+		Ext.getCmp('delete_cold_tasks_form').form.submit({
+			waitMsg : '正在修改......',
+			url : '/delete_cold_tasks/' + self.plat + '/',
+			method : 'post',
+			timeout : 5000,//5秒超时, 
+			params : '',
+			success : function(form, action) {
+				var result = Ext.util.JSON.decode(action.response.responseText);
+				Ext.getCmp("delete_cold_tasks_win_" + self.plat).close();
+				Ext.MessageBox.alert('成功', result.data);
+				self.room_store.reload();			//重新载入数据，即根据当前页面的条件，刷新用户页面
+			},
+			failure : function(form, action) {
+				alert('失败:' + action.response.responseText);
+				if(typeof(action.response) == 'undefined'){
+					Ext.MessageBox.alert('警告','添加失败，请重新添加！');
+				} else {
+					var result = Ext.util.JSON.decode(action.response.responseText);
+					if(action.failureType == Ext.form.Action.SERVER_INVALID){
+						Ext.MessageBox.alert('警告', result.data);
+					}else{
+						Ext.MessageBox.alert('警告','表单填写异常，请重新填写！');
+					}
+				}
+			}
+		});
+	};
+	
+	
 };
 
 Room = new roomJS();
