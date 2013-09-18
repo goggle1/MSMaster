@@ -65,6 +65,7 @@ class MS_ALL:
             
         return result
     
+    
     def dispatch_task(self, task_hash):        
         one = self.ms_list[self.round_robin_index]
         one.change_list.append(task_hash)
@@ -75,5 +76,10 @@ class MS_ALL:
             self.round_robin_index = 0    
             
         return True
+    
+    
+    def get_cur_ms(self):
+        one = self.ms_list[self.round_robin_index]
+        return one
     
         

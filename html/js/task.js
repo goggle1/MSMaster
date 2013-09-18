@@ -90,6 +90,10 @@ var taskJS = function(){
 				iconCls: 'upload',
 				handler: self.upload_hits_num
 			},'-',{
+				text: '计算冷度',
+				iconCls: 'chart',
+				handler: self.calc_cold
+			},'-',{
 				text: '导出热度表',
 				iconCls: 'compare_down',
 				handler: self.down_hot_table
@@ -228,6 +232,21 @@ var taskJS = function(){
 			});
 		}		
 		
+	}
+	
+	this.calc_cold = function() 
+	{		
+		Ext.Ajax.request({
+			timeout: 60, // 60 seconds
+			url: '/calc_cold/' + self.plat + '/',			
+			params: '',
+			success: function(response) {
+				Ext.MessageBox.alert('成功', response.responseText);	
+			},
+			failure: function(response){
+				Ext.MessageBox.alert('失败', Ext.encode(response));
+			}			
+		});
 	}
 	
 	this.down_hot_table = function(){

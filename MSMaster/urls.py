@@ -32,6 +32,7 @@ urlpatterns = patterns('',
     url(r'^down_cold_tasks/([^/]+)/$',  'task.views.down_cold_tasks'),
     url(r'^show_task_info/([^/]+)/$',   'task.views.show_task_list'),
     url(r'^upload_hits_num/([^/]+)/$',  'task.views.upload_hits_num'),
+    url(r'^calc_cold/([^/]+)/$',        'task.views.calc_cold'),
     url(r'^get_operation_list/([^/]+)/$', 'operation.views.get_operation_list'),
     url(r'^show_operation_info/([^/]+)/$','operation.views.show_operation_list'),
 )

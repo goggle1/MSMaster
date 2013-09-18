@@ -335,7 +335,7 @@ class Thread_UPLOAD(threading.Thread):
                 #print '%s, %s' % (hits_num, hash_id)
                 task_list = hash_list_local.filter(hash=hash_id)
                 if(len(task_list) > 0):
-                    #print 'update' 
+                    print 'update %s' % (hash_id)
                     hash_local = task_list[0]
                     hash_local.hot += string.atoi(hits_num)
                     hash_local.last_hit_time = hits_time
@@ -344,7 +344,7 @@ class Thread_UPLOAD(threading.Thread):
                     hash_local.save()
                     self.num_update += 1
                 else:
-                    print 'insert' 
+                    print 'insert %s' % (hash_id) 
                     v_hits_num = string.atoi(hits_num)
                     task_insert(self.platform, hash_id, '2000-01-01T00:00:00+00:00', 1, v_hits_num, 0.0, 0.0, 0.0, hits_time, v_hits_num)
                     self.num_insert += 1
@@ -355,12 +355,14 @@ class Thread_UPLOAD(threading.Thread):
         print 'add_hits_num line_num=%d' % (line_num)
         
         # calc cold1
+        '''
         hash_list_cold = hash_list_local.filter(last_hit_time__lte = hits_time)  
         print 'hash_list_cold count %d' % (hash_list_cold.count())
         for task in hash_list_cold:
             task.cold1 = day_diff(str(task.last_hit_time), hits_time)
             #print '%s cold1: %f' % (task.hash, task.cold1)
             task.save()
+        '''
             
         return True
     
@@ -489,7 +491,7 @@ class Thread_UPLOAD(threading.Thread):
         
         self.record.memo = output
         self.record.save()
-        
+                
       
 def upload_hits_num(request, platform):
     print 'upload_hits_num'  
@@ -499,7 +501,7 @@ def upload_hits_num(request, platform):
     print hits_date    
     
     now_time = time.localtime(time.time())
-    today = time.strftime("%Y-%m-%d", now_time)
+    #today = time.strftime("%Y-%m-%d", now_time)
     dispatch_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
     
     operation = {}
@@ -521,6 +523,78 @@ def upload_hits_num(request, platform):
     
     return HttpResponse(output)     
     
+
+
+class Thread_CALC_COLD(threading.Thread):
+    platform = ''
+    record = None
+    num_calc = 0
+    
+    def __init__(self, the_platform, the_record):
+        super(Thread_CALC_COLD, self).__init__()        
+        self.platform = the_platform
+        self.record = the_record        
+            
+    def run(self):
+        now_time = time.localtime(time.time())        
+        begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+        print 'begin@ %s' % (begin_time)
+        self.record.begin_time = begin_time
+        self.record.status = 1
+        self.record.save()
+    
+        hits_time = time.strftime("%Y-%m-%dT00:00:00+00:00", now_time)    
+        
+        hash_list_local = get_task_local(self.platform)  
+            
+        #hash_list_cold = hash_list_local.filter(last_hit_time__lte = hits_time)  
+        hash_list_cold = hash_list_local
+        print 'hash_list_cold count %d' % (hash_list_cold.count())
+        for task in hash_list_cold:
+            task.cold1 = day_diff(str(task.last_hit_time), hits_time)
+            print '%d: %s cold1: %f' % (self.num_calc, task.hash, task.cold1)
+            task.save()
+            self.num_calc += 1            
+        
+        now_time = time.localtime(time.time())        
+        end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+        print 'end@ %s' % (end_time)
+        output = 'now: %s, ' % (end_time)
+        output += 'num_calc: %d, ' % (self.num_calc)
+        print output
+        self.record.end_time = end_time
+        self.record.status = 2                
+        self.record.memo = output
+        self.record.save()
+        
+        
+
+def calc_cold(request, platform):
+    print 'calc_cold'
+    
+    now_time = time.localtime(time.time())
+    today = time.strftime("%Y-%m-%d", now_time)
+    dispatch_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+    
+    operation = {}
+    operation['type'] = 'calc_cold'
+    operation['name'] = today
+        
+    output = ''
+    records = get_operation_record(platform, operation['type'], operation['name'])
+    if(len(records) == 0):
+        record = create_operation_record(platform, operation['type'], operation['name'], dispatch_time)
+        if(record != None):
+            output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
+            # start thread.
+            t = Thread_CALC_COLD(platform, record)            
+            t.start()
+    else:
+        for record in records:
+            output += 'operation exist, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
+    
+    return HttpResponse(output)  
+
 
 
 def show_task_list(request, platform):  

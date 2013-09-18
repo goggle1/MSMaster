@@ -396,7 +396,7 @@ var roomJS = function(){
 		});
 		
 		var win = new Ext.Window({
-			width:400,height:300,minWidth:200,minHeight:200,
+			width:400,height:220,minWidth:200,minHeight:100,
 			autoScroll:'auto',
 			title : "删除冷门任务",
 			id : "delete_cold_tasks_win_" + self.plat,
