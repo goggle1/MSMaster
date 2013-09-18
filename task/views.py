@@ -332,10 +332,10 @@ class Thread_UPLOAD(threading.Thread):
             if(len(items) >= 2):
                 hits_num = items[0].strip()
                 hash_id = items[1].strip()
-                #print '%s, %s' % (hits_num, hash_id)
+                print '%s, %s' % (hits_num, hash_id)
                 task_list = hash_list_local.filter(hash=hash_id)
                 if(len(task_list) > 0):
-                    print 'update %s' % (hash_id)
+                    #print 'update %s' % (hash_id)
                     hash_local = task_list[0]
                     hash_local.hot += string.atoi(hits_num)
                     hash_local.last_hit_time = hits_time
