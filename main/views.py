@@ -1,9 +1,53 @@
 #coding=utf-8
 # Create your views here.
+from django.contrib import auth
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import render_to_response,RequestContext
 import json
+import time
+    
+def login(request):
+    username = request.POST.get('username', '')
+    password = request.POST.get('password', '')
+    user = auth.authenticate(username=username, password=password)
+    if user is not None and user.is_active:
+        # Correct password, and the user is marked "active"
+        auth.login(request, user)
+        # Redirect to a success page.
+        # return HttpResponseRedirect("/account/loggedin/")
+        # {"success":True,"data":"\u6210\u529f\u767b\u5f55","createTime":"2013-09-22 15:38:07"}
+        return_datas = {"success":True, "data":"登录成功"}
+        now_time = time.localtime(time.time())        
+        create_time = time.strftime("%Y-%m-%d %H:%M:%S", now_time)
+        return_datas['createTime'] = create_time                
+        return HttpResponse(json.dumps(return_datas))        
+    else:
+        # Show an error page
+        #return HttpResponseRedirect("/account/invalid/")
+        return render_to_response('login.html')
+    
+    
+def logout(request):
+    auth.logout(request)
+    # Redirect to a success page.
+    # return HttpResponseRedirect("/account/loggedout/")
+    return render_to_response('login.html')
 
+
+def get_username(request):    
+    #print request.user
+    #print request.user.username
+    # Redirect to a success page.
+    # return HttpResponseRedirect("/account/loggedout/")
+    return_datas = {"success":True, "data":request.user.username}
+    now_time = time.localtime(time.time())        
+    create_time = time.strftime("%Y-%m-%d %H:%M:%S", now_time)
+    return_datas['createTime'] = create_time                
+    return HttpResponse(json.dumps(return_datas)) 
+
+    
+@login_required
 def main(request):
     return render_to_response('main.html')
 

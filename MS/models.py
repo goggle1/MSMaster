@@ -29,6 +29,9 @@ class mobile_ms_server(models.Model):
   
     class Meta:
         db_table    = "mobile_ms_server" 
+        
+    def __unicode__(self):
+        return "%s,%s,%s" % (str(self.server_id), str(self.server_name), str(self.server_ip))
           
     def todict(self):
         dic = {}
@@ -83,6 +86,9 @@ class pc_ms_server(models.Model):
     
     class Meta:
         db_table    = "pc_ms_server" 
+        
+    def __unicode__(self):
+        return "%s,%s,%s" % (str(self.server_id), str(self.server_name), str(self.server_ip))
         
     def todict(self):
         dic = {}

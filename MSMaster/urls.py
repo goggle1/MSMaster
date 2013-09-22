@@ -1,8 +1,8 @@
 from django.conf.urls import patterns, include, url
 
 # Uncomment the next two lines to enable the admin:
-# from django.contrib import admin
-# admin.autodiscover()
+from django.contrib import admin
+admin.autodiscover()
 
 urlpatterns = patterns('',
     # Examples:
@@ -13,9 +13,12 @@ urlpatterns = patterns('',
     # url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
 
     # Uncomment the next line to enable the admin:
-    # url(r'^admin/', include(admin.site.urls)),
-    url(r'^$', 'main.views.main'),
-    url(r'^tree/$', 'main.views.tree'),
+    url(r'^admin/', include(admin.site.urls)),
+    url(r'^accounts/login/$',       'main.views.login'),
+    url(r'^accounts/logout/$',      'main.views.logout'),
+    url(r'^get_username/$',         'main.views.get_username'),
+    url(r'^$',              'main.views.main'),
+    url(r'^tree/$',         'main.views.tree'),
     url(r'^get_ms_list/([^/]+)/$',      'MS.views.get_ms_list'),
     url(r'^show_ms_info/([^/]+)/$',     'MS.views.show_ms_list'),
     url(r'^sync_ms_db/([^/]+)/$',       'MS.views.sync_ms_db'),

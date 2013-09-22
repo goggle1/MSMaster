@@ -78,8 +78,82 @@ Ext.onReady(function() {
 		}]
 	});
 	
-	//index_main('task', '转码任务');
-	//index_main('server', '转码服务器');
+	function expand(){
+		Ext.getCmp('west_panel').getRootNode().expandChildNodes(true);
+	    };
+    
+	function collapse(){
+		Ext.getCmp('west_panel').getRootNode().collapseChildNodes(true);
+	};
+	    
+	//嵌套异步请求，得到该用户的全部权限
+	/*
+	Base.request(
+			'ext_user',
+			'/authority/index.php?c=user&a=view_user_module_auth',
+			'',
+			function(result){
+				MACROSS_GLOBAL_MODULE_AUTHS = result.data;
+			},
+			function(result){
+				//失败不处理
+			}
+	);
+	*/
+		
+	//更新用户的登录信息，并更新global.js里的MACROSS_LOGIN_USER_NAME
+	/*
+	Base.request(
+		'main_panel',
+		'/login/index.php?c=login&a=get_username',		
+		'',
+		function(result){
+			Ext.getCmp('west_panel').setTitle("欢迎您：" + result.data);
+			MSMASTER_LOGIN_USER_NAME = result.data;				
+		},
+		function(result){
+			//失败不处理
+		}
+	);
+	*/
+	
+	Ext.Ajax.request({     
+       url:'/get_username/',  
+       params:
+       {  
+       	
+       },  
+       success: function(resp,opts) 
+       {   
+			var respText = Ext.util.JSON.decode(resp.responseText);  
+			Ext.getCmp('west_panel').setTitle("欢迎您：" + respText.data);
+			//Ext.Msg.alert('错误', respText.name+"====="+respText.id);   
+		},   
+		failure: function(resp,opts) {   
+		    //失败不处理
+		}     
+         
+    });
+		
+		
+	//获取系统配置，并更新global.js里的MACROSS_GLOBAL_CONFIG
+	/*
+	Base.request(
+		'main_panel',
+		'/system/index.php?c=config&a=view_system_config',
+		'',
+		function(result){
+			var data = result.data;
+				for(var i=0;i<data.length;i++){
+					MACROSS_GLOBAL_CONFIG[data[i].type] = data[i].value;
+				}
+		},
+		function(result){
+			//失败不处理
+		}
+	);
+	*/
+		
 });
 
 //清楚本地缓存
@@ -90,7 +164,7 @@ function clearAllLocalStore() {
 function logout() {
 	Ext.MessageBox.confirm("请确认","确定要退出嘛？", function(button) {
 		if(button == 'yes'){
-			window.location.href = '/login/index.php?c=login&a=logout';
+			window.location.href = '/accounts/logout/';
 		}
 	});
 };
