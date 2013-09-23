@@ -354,11 +354,12 @@ def sync_ms_db(request, platform):
     operation = {}
     operation['type'] = 'sync_ms_db'
     operation['name'] = today
+    operation['user'] = request.user.username
         
     output = ''
     records = get_operation_record_undone(platform, operation['type'], operation['name'])
     if(len(records) == 0):
-        record = create_operation_record(platform, operation['type'], operation['name'], dispatch_time)
+        record = create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time)
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.
@@ -382,11 +383,12 @@ def sync_ms_status(request, platform):
     operation = {}
     operation['type'] = 'sync_ms_status'
     operation['name'] = today
+    operation['user'] = request.user.username
         
     output = ''
     records = get_operation_record_undone(platform, operation['type'], operation['name'])
     if(len(records) == 0):
-        record = create_operation_record(platform, operation['type'], operation['name'], dispatch_time)
+        record = create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time)
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.

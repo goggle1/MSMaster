@@ -24,13 +24,13 @@ def get_operation_record_undone(platform, v_type, v_name):
     return records
 
 
-def create_operation_record(platform, v_type, v_name, v_dispatch_time, v_memo=''):
+def create_operation_record(platform, v_type, v_name, v_user, v_dispatch_time, v_memo=''):
     record = None    
     if(platform == 'mobile'):
-        record = models.mobile_operation(type=v_type, name=v_name, dispatch_time=v_dispatch_time, status=models.STATUS_DISPATCHED, memo=v_memo)
+        record = models.mobile_operation(type=v_type, name=v_name, user=v_user, dispatch_time=v_dispatch_time, status=models.STATUS_DISPATCHED, memo=v_memo)
         record.save()
     elif(platform == 'pc'):
-        record = models.pc_operation(type=v_type, name=v_name, dispatch_time=v_dispatch_time, status=models.STATUS_DISPATCHED, memo=v_memo)
+        record = models.pc_operation(type=v_type, name=v_name, user=v_user, dispatch_time=v_dispatch_time, status=models.STATUS_DISPATCHED, memo=v_memo)
         record.save()
     return record
 

@@ -277,11 +277,12 @@ def sync_hash_db(request, platform):
     operation = {}
     operation['type'] = 'sync_hash_db'
     operation['name'] = today
+    operation['user'] = request.user.username
         
     output = ''
     records = get_operation_record_undone(platform, operation['type'], operation['name'])
     if(len(records) == 0):
-        record = create_operation_record(platform, operation['type'], operation['name'], dispatch_time)
+        record = create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time)
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.
@@ -507,11 +508,12 @@ def upload_hits_num(request, platform):
     operation = {}
     operation['type'] = 'upload_hits_num'
     operation['name'] = hits_date
+    operation['user'] = request.user.username
         
     output = ''
     records = get_operation_record(platform, operation['type'], operation['name'])
     if(len(records) == 0):
-        record = create_operation_record(platform, operation['type'], operation['name'], dispatch_time)
+        record = create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time)
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.
@@ -579,11 +581,12 @@ def calc_cold(request, platform):
     operation = {}
     operation['type'] = 'calc_cold'
     operation['name'] = today
+    operation['user'] = request.user.username
         
     output = ''
     records = get_operation_record(platform, operation['type'], operation['name'])
     if(len(records) == 0):
-        record = create_operation_record(platform, operation['type'], operation['name'], dispatch_time)
+        record = create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time)
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.

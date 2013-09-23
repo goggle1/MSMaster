@@ -425,11 +425,12 @@ def sync_room_db(request, platform):
     operation = {}
     operation['type'] = 'sync_room_db'
     operation['name'] = today
+    operation['user'] = request.user.username
         
     output = ''
     records = get_operation_record_undone(platform, operation['type'], operation['name'])
     if(len(records) == 0):
-        record = create_operation_record(platform, operation['type'], operation['name'], dispatch_time)
+        record = create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time)
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.
@@ -458,12 +459,13 @@ def add_hot_tasks(request, platform):
     operation = {}
     operation['type'] = 'add_hot_tasks'
     operation['name'] = room_id
+    operation['user'] = request.user.username
     operation['memo'] = num_dispatching
         
     output = ''
     records = get_operation_record_undone(platform, operation['type'], operation['name'])
     if(len(records) == 0):
-        record = create_operation_record(platform, operation['type'], operation['name'], dispatch_time, operation['memo'])
+        record = create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time, operation['memo'])
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.
@@ -491,12 +493,13 @@ def delete_cold_tasks(request, platform):
     operation = {}
     operation['type'] = 'delete_cold_tasks'
     operation['name'] = room_id
+    operation['user'] = request.user.username
     operation['memo'] = num_deleting
         
     output = ''
     records = get_operation_record_undone(platform, operation['type'], operation['name'])
     if(len(records) == 0):
-        record = create_operation_record(platform, operation['type'], operation['name'], dispatch_time, operation['memo'])
+        record = create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time, operation['memo'])
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.
@@ -523,12 +526,13 @@ def sync_room_status(request, platform):
     operation = {}
     operation['type'] = 'sync_room_status'
     operation['name'] = today
+    operation['user'] = request.user.username
     operation['memo'] = ids
         
     output = ''
     records = get_operation_record_undone(platform, operation['type'], operation['name'])
     if(len(records) == 0):
-        record = create_operation_record(platform, operation['type'], operation['name'], dispatch_time, operation['memo'])
+        record = create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time, operation['memo'])
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.
