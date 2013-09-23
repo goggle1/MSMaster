@@ -15,6 +15,15 @@ def get_operation_record(platform, v_type, v_name):
     return records
 
 
+def get_operation_undone_by_type(platform, v_type):
+    records = []
+    if(platform == 'mobile'):
+        records = models.mobile_operation.objects.filter(type=v_type).exclude(status=models.STATUS_DONE)
+    elif(platform == 'pc'):
+        records = models.pc_operation.objects.filter(type=v_type).exclude(status=models.STATUS_DONE)
+    return records
+
+
 def get_operation_record_undone(platform, v_type, v_name):
     records = []
     if(platform == 'mobile'):
@@ -33,6 +42,18 @@ def create_operation_record(platform, v_type, v_name, v_user, v_dispatch_time, v
         record = models.pc_operation(type=v_type, name=v_name, user=v_user, dispatch_time=v_dispatch_time, status=models.STATUS_DISPATCHED, memo=v_memo)
         record.save()
     return record
+
+
+def create_operation_record_by_dict(platform, operation):
+    record = None    
+    if(platform == 'mobile'):
+        record = models.mobile_operation(type=operation['type'], name=operation['name'], user=operation['user'], dispatch_time=operation['dispatch_time'], status=models.STATUS_DISPATCHED, memo=operation['memo'])
+        record.save()
+    elif(platform == 'pc'):
+        record = models.pc_operation(type=operation['type'], name=operation['name'], user=operation['user'], dispatch_time=operation['dispatch_time'], status=models.STATUS_DISPATCHED, memo=operation['memo'])
+        record.save()
+    return record
+
 
 
 def get_operation_local(platform):

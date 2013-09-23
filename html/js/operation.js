@@ -88,6 +88,16 @@ var operationJS = function(){
 				iconCls: 'refresh',
 				handler: self.refresh_operation_list
 			},'-',{
+				id: 'do_selected_operations',
+				text: '执行选中操作',				
+				iconCls: 'confirm',
+				handler: self.show_operation_detail
+			},'-',{
+				id: 'do_all_operations',
+				text: '执行全部操作',				
+				iconCls: 'check',
+				handler: self.show_operation_detail
+			},'-',{
 				id: 'show_operation_detail',
 				text: '操作详细信息',				
 				iconCls: 'detail',

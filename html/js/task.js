@@ -2,6 +2,74 @@
 
 var TASK_PAGE_SIZE = 20;
 
+function appendZero(n)
+{
+	return(("00"+ n).substr(("00"+ n).length-2));
+}
+
+function formatYear(theYear)
+{  
+	var tmpYear = parseInt(theYear,10); 
+  	if (tmpYear < 100)
+  	{ 
+  		tmpYear += 1900; 
+  		if (tmpYear < 1940)
+  		{ 
+  			tmpYear += 100; 
+  		} 
+  	} 
+  	if (tmpYear < this.MinYear)
+  	{ 
+  		tmpYear = this.MinYear; 
+  	} 
+  	if (tmpYear > this.MaxYear)
+  	{ 
+  		tmpYear = this.MaxYear; 
+  	} 
+  	return(tmpYear); 
+}
+
+function formatDate(day, formattype)
+{
+	var dateString = "";
+
+ 	var thisyear  = formatYear(day.getFullYear());
+ 	var thismonth = appendZero(day.getMonth()+1);
+ 	var thisday   = appendZero(day.getDate());
+ 	var thishour  = appendZero(day.getHours());
+ 	var thismin   = appendZero(day.getMinutes());
+ 	var thissec   = appendZero(day.getSeconds());
+
+ 	switch (formattype)
+ 	{
+  	case 0:
+   		dateString = thisyear + "年" + thismonth + "月" + thisday + "日";
+   		break;
+  	case 1:
+   		dateString = thisyear + "-" + thismonth + "-" + thisday;
+   		break;
+   	case 2:
+   		dateString = thisyear + thismonth + thisday;
+   		break;
+  	case 3:
+   		dateString = thisyear + "-" + thismonth + "-" + thisday+ " " + appendZero(thishour) + ":" + appendZero(thismin) + ":" + appendZero(thissec);
+   		break;
+  	default:
+   		dateString = thisyear + "-" + thismonth + "-" + thisday;
+ 	}
+ 	return dateString;
+}
+	
+function getDiffDate(dadd,formattype)
+{
+	//可以加上错误处理
+ 	var a = new Date();
+ 	a = a.valueOf();
+ 	a = a + dadd * 24 * 60 * 60 * 1000;
+ 	a = new Date(a);
+ 	return formatDate(a, formattype);
+}
+
 var taskJS = function(){
 	var self = this;
 	var task_grid = new Object();		//定义全局grid，方便其他方法中的调用
@@ -126,6 +194,7 @@ var taskJS = function(){
 		self.task_store.reload();
 	}
 	
+	/*
 	this.sync_hash_db = function() 
 	{		
 		Ext.Ajax.request({
@@ -140,79 +209,114 @@ var taskJS = function(){
 			}			
 		});
 	}
+	*/
 	
-	function appendZero(n)
-	{
- 		return(("00"+ n).substr(("00"+ n).length-2));
-	}
+	
+	this.sync_hash_db = function(){
+		//避免win的重复生成
+		if(Ext.get("sync_hash_db_win_" + self.plat)){
+			Ext.getCmp("sync_hash_db_win_" + self.plat).show();
+			return true;
+		}
+		
+		var yesterday = getDiffDate(-1, 2);
+		
+		var sync_hash_db_form = new Ext.FormPanel({
+			id: 'sync_hash_db_form',
+			autoWidth: true,//自动调整宽度
+			url:'',
+			frame:true,
+			monitorValid : true,
+			bodyStyle:'padding:5px 5px 0',
+			labelWidth:150,
+			defaults:{xtype:'textfield',width:200},
+			items: [				
+				{
+					fieldLabel:'begin_date',	
+					name: 'begin_date', 
+					value: yesterday, 
+					allowBlank: true,
+					blankText: '开始日期可以为空'
+				},
+				{
+					fieldLabel:'end_date',	
+					name: 'end_date', 
+					value: '', 
+					allowBlank: true,
+					blankText: '截止日期可以为空'
+				},					
+				{
+				    xtype:'checkbox',
+				    id: 'start_now',
+				    name: 'start_now',
+				    //align:'left',
+				    fieldLabel:'是否立即执行',
+				    checked: false
+				}	
+			],
+			buttons: [{
+				text: '确定',
+				handler: self.syncHashDbEnd,
+				formBind : true
+			},{
+				text: '取消',
+				handler: function(){Ext.getCmp("sync_hash_db_win_" + self.plat).close();}
+			}]
+		});
+		
+		var win = new Ext.Window({
+			width:400,height:160,minWidth:200,minHeight:100,
+			autoScroll:'auto',
+			title : "同步hash库",
+			id : "sync_hash_db_win_" + self.plat,
+			//renderTo: "ext_room",
+			collapsible: true,
+			modal:false,	//True 表示为当window显示时对其后面的一切内容进行遮罩，false表示为限制对其它UI元素的语法（默认为 false
+			//所谓布局就是指容器组件中子元素的分布，排列组合方式
+			layout: 'form',//layout布局方式为form
+			maximizable:true,
+			minimizable:false,
+			items: sync_hash_db_form
+		}).show();		
+		
+	};
+	
+	
+	this.syncHashDbEnd = function() {
+		Ext.getCmp("sync_hash_db_form").form.submit({
+			waitMsg : '正在修改......',
+			url : '/sync_hash_db/' + self.plat + '/',
+			method : 'post',
+			timeout : 5000,//5秒超时, 
+			params : '',
+			success : function(form, action) {
+				var result = Ext.util.JSON.decode(action.response.responseText);
+				Ext.getCmp("sync_hash_db_win_" + self.plat).close();
+				Ext.MessageBox.alert('成功', result.data);
+				//self.task_store.reload();			//重新载入数据，即根据当前页面的条件，刷新用户页面
+			},
+			failure : function(form, action) {
+				alert('失败:' + action.response.responseText);
+				if(typeof(action.response) == 'undefined'){
+					Ext.MessageBox.alert('警告','添加失败，请重新添加！');
+				} else {
+					var result = Ext.util.JSON.decode(action.response.responseText);
+					if(action.failureType == Ext.form.Action.SERVER_INVALID){
+						Ext.MessageBox.alert('警告', result.data);
+					}else{
+						Ext.MessageBox.alert('警告','表单填写异常，请重新填写！');
+					}
+				}
+			}
+		});
+	};
+	
 
-	function formatYear(theYear)
-	{  
-		var tmpYear = parseInt(theYear,10); 
-	  	if (tmpYear < 100)
-	  	{ 
-	  		tmpYear += 1900; 
-	  		if (tmpYear < 1940)
-	  		{ 
-	  			tmpYear += 100; 
-	  		} 
-	  	} 
-	  	if (tmpYear < this.MinYear)
-	  	{ 
-	  		tmpYear = this.MinYear; 
-	  	} 
-	  	if (tmpYear > this.MaxYear)
-	  	{ 
-	  		tmpYear = this.MaxYear; 
-	  	} 
-	  	return(tmpYear); 
-	}
-
-	function formatDate(day, formattype)
-	{
-		var dateString = "";
-	
-	 	var thisyear  = formatYear(day.getFullYear());
-	 	var thismonth = appendZero(day.getMonth()+1);
-	 	var thisday   = appendZero(day.getDate());
-	 	var thishour  = appendZero(day.getHours());
-	 	var thismin   = appendZero(day.getMinutes());
-	 	var thissec   = appendZero(day.getSeconds());
-	
-	 	switch (formattype)
-	 	{
-	  	case 0:
-	   		dateString = thisyear + "年" + thismonth + "月" + thisday + "日";
-	   		break;
-	  	case 1:
-	   		dateString = thisyear + "-" + thismonth + "-" + thisday;
-	   		break;
-	   	case 2:
-	   		dateString = thisyear + thismonth + thisday;
-	   		break;
-	  	case 3:
-	   		dateString = thisyear + "-" + thismonth + "-" + thisday+ " " + appendZero(thishour) + ":" + appendZero(thismin) + ":" + appendZero(thissec);
-	   		break;
-	  	default:
-	   		dateString = thisyear + "-" + thismonth + "-" + thisday;
-	 	}
-	 	return dateString;
-	}
-	
-	function getDiffDate(dadd,formattype)
-	{
-		//可以加上错误处理
-	 	var a = new Date();
-	 	a = a.valueOf();
-	 	a = a + dadd * 24 * 60 * 60 * 1000;
-	 	a = new Date(a);
-	 	return formatDate(a, formattype);
-	}
-
+	/*
 	this.upload_hits_num = function() 
 	{		
-		var pre_date = getDiffDate(-1, 2);
-		Ext.MessageBox.prompt('上传点击量', '请输入日期：', upload_tasks, this, false, pre_date);
+		var yesterday = getDiffDate(-1, 2);
+		Ext.MessageBox.prompt('上传点击量', '请输入日期：', upload_tasks, this, false, yesterday);
 		function upload_tasks(e, text){
 			if(e == "cancel")return true;
 			if(isNaN(text)){
@@ -233,7 +337,108 @@ var taskJS = function(){
 		}		
 		
 	}
+	*/
 	
+	this.upload_hits_num = function(){
+		//避免win的重复生成
+		if(Ext.get("upload_hits_num_win_" + self.plat)){
+			Ext.getCmp("upload_hits_num_win_" + self.plat).show();
+			return true;
+		}
+		
+		var yesterday = getDiffDate(-1, 2);
+		
+		var upload_hits_num_form = new Ext.FormPanel({
+			id: 'upload_hits_num_form',
+			autoWidth: true,//自动调整宽度
+			url:'',
+			frame:true,
+			monitorValid : true,
+			bodyStyle:'padding:5px 5px 0',
+			labelWidth:150,
+			defaults:{xtype:'textfield',width:200},
+			items: [				
+				{
+					fieldLabel:'begin_date',	
+					name: 'begin_date', 
+					value: yesterday, 
+					allowBlank: false,
+					blankText: '开始日期不能为空'
+				},
+				{
+					fieldLabel:'end_date',	
+					name: 'end_date', 
+					value: '', 
+					allowBlank: true,
+					blankText: '截止日期可以为空'
+				},					
+				{
+				    xtype:'checkbox',
+				    id: 'start_now',
+				    name: 'start_now',
+				    //align:'left',
+				    fieldLabel:'是否立即执行',
+				    checked: false
+				}	
+			],
+			buttons: [{
+				text: '确定',
+				handler: self.uploadHitsNumEnd,
+				formBind : true
+			},{
+				text: '取消',
+				handler: function(){Ext.getCmp("upload_hits_num_win_" + self.plat).close();}
+			}]
+		});
+		
+		var win = new Ext.Window({
+			width:400,height:160,minWidth:200,minHeight:100,
+			autoScroll:'auto',
+			title : "上传点击量",
+			id : "upload_hits_num_win_" + self.plat,
+			//renderTo: "ext_room",
+			collapsible: true,
+			modal:false,	//True 表示为当window显示时对其后面的一切内容进行遮罩，false表示为限制对其它UI元素的语法（默认为 false
+			//所谓布局就是指容器组件中子元素的分布，排列组合方式
+			layout: 'form',//layout布局方式为form
+			maximizable:true,
+			minimizable:false,
+			items: upload_hits_num_form
+		}).show();		
+		
+	};
+	
+	
+	this.uploadHitsNumEnd = function() {
+		Ext.getCmp("upload_hits_num_form").form.submit({
+			waitMsg : '正在修改......',
+			url : '/upload_hits_num/' + self.plat + '/',
+			method : 'post',
+			timeout : 5000,//5秒超时, 
+			params : '',
+			success : function(form, action) {
+				var result = Ext.util.JSON.decode(action.response.responseText);
+				Ext.getCmp("upload_hits_num_win_" + self.plat).close();
+				Ext.MessageBox.alert('成功', result.data);
+				//self.task_store.reload();			//重新载入数据，即根据当前页面的条件，刷新用户页面
+			},
+			failure : function(form, action) {
+				alert('失败:' + action.response.responseText);
+				if(typeof(action.response) == 'undefined'){
+					Ext.MessageBox.alert('警告','添加失败，请重新添加！');
+				} else {
+					var result = Ext.util.JSON.decode(action.response.responseText);
+					if(action.failureType == Ext.form.Action.SERVER_INVALID){
+						Ext.MessageBox.alert('警告', result.data);
+					}else{
+						Ext.MessageBox.alert('警告','表单填写异常，请重新填写！');
+					}
+				}
+			}
+		});
+	};
+	
+	/*
 	this.calc_cold = function() 
 	{		
 		Ext.Ajax.request({
@@ -248,6 +453,105 @@ var taskJS = function(){
 			}			
 		});
 	}
+	*/
+	
+	this.calc_cold = function(){
+		//避免win的重复生成
+		if(Ext.get("calc_cold_win_" + self.plat)){
+			Ext.getCmp("calc_cold_win_" + self.plat).show();
+			return true;
+		}
+				
+		
+		var calc_cold_form = new Ext.FormPanel({
+			id: 'calc_cold_form',
+			autoWidth: true,//自动调整宽度
+			url:'',
+			frame:true,
+			monitorValid : true,
+			bodyStyle:'padding:5px 5px 0',
+			labelWidth:150,
+			defaults:{xtype:'textfield',width:200},
+			items: [				
+			/*	{
+					fieldLabel:'begin_date',	
+					name: 'begin_date', 
+					value: yesterday, 
+					allowBlank: false,
+					blankText: '开始日期不能为空'
+				},
+				{
+					fieldLabel:'end_date',	
+					name: 'end_date', 
+					value: '', 
+					allowBlank: true,
+					blankText: '截止日期可以为空'
+				},	*/				
+				{
+				    xtype:'checkbox',
+				    id: 'start_now',
+				    name: 'start_now',
+				    //align:'left',
+				    fieldLabel:'是否立即执行',
+				    checked: false
+				}	
+			],
+			buttons: [{
+				text: '确定',
+				handler: self.calcColdEnd,
+				formBind : true
+			},{
+				text: '取消',
+				handler: function(){Ext.getCmp("calc_cold_win_" + self.plat).close();}
+			}]
+		});
+		
+		var win = new Ext.Window({
+			width:400,height:110,minWidth:200,minHeight:100,
+			autoScroll:'auto',
+			title : "计算冷度",
+			id : "calc_cold_win_" + self.plat,
+			//renderTo: "ext_room",
+			collapsible: true,
+			modal:false,	//True 表示为当window显示时对其后面的一切内容进行遮罩，false表示为限制对其它UI元素的语法（默认为 false
+			//所谓布局就是指容器组件中子元素的分布，排列组合方式
+			layout: 'form',//layout布局方式为form
+			maximizable:true,
+			minimizable:false,
+			items: calc_cold_form
+		}).show();		
+		
+	};
+	
+	
+	this.calcColdEnd = function() {
+		Ext.getCmp("calc_cold_form").form.submit({
+			waitMsg : '正在修改......',
+			url : '/calc_cold/' + self.plat + '/',
+			method : 'post',
+			timeout : 5000,//5秒超时, 
+			params : '',
+			success : function(form, action) {
+				var result = Ext.util.JSON.decode(action.response.responseText);
+				Ext.getCmp("calc_cold_win_" + self.plat).close();
+				Ext.MessageBox.alert('成功', result.data);
+				//self.task_store.reload();			//重新载入数据，即根据当前页面的条件，刷新用户页面
+			},
+			failure : function(form, action) {
+				alert('失败:' + action.response.responseText);
+				if(typeof(action.response) == 'undefined'){
+					Ext.MessageBox.alert('警告','添加失败，请重新添加！');
+				} else {
+					var result = Ext.util.JSON.decode(action.response.responseText);
+					if(action.failureType == Ext.form.Action.SERVER_INVALID){
+						Ext.MessageBox.alert('警告', result.data);
+					}else{
+						Ext.MessageBox.alert('警告','表单填写异常，请重新填写！');
+					}
+				}
+			}
+		});
+	};
 	
 	this.down_hot_table = function(){
 		var pre_task_num = 20000;
