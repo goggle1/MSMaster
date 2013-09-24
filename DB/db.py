@@ -25,5 +25,5 @@ class DB_CONFIG:
 class HITS_FILE:
     template_mobile = '/home/xiongming/data_analysis/topdata/mo/logdata/logdata_%s_hashid_sort.result'
     template_pc     = '/home/xiongming/data_analysis/topdata/pc/logdata/logdata_%s_hashid_sort.result'
-    hot_period      = 3
+    hot_period      = 30
         

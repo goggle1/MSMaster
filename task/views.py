@@ -405,7 +405,6 @@ def do_upload(platform, record):
     
     hits_date = record.name
     (result, num_insert, num_update) = upload_add_hits_num(platform, hits_date)
-    #result = True
     if(result == False):
         now_time = time.localtime(time.time())        
         end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)

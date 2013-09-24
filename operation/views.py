@@ -226,7 +226,8 @@ def do_all_operations(request, platform):
     output = ''
     operation_list = []
     operations = get_operation_local(platform)    
-    operation_list = operations.filter(status=models.STATUS_DISPATCHED)
+    temp_list = operations.filter(status=models.STATUS_DISPATCHED)
+    operation_list.extend(temp_list)
     
     print 'before:'
     for op in operation_list:
