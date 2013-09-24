@@ -10,13 +10,7 @@ import sys
 #from DB.db import DB_MYSQL
 #from DB.db import DB_CONFIG
 from DB.db import *
-#import operation.views
-#from operation.views import *
-from operation.views import get_operation_record
-from operation.views import get_operation_undone_by_type
-from operation.views import create_operation_record
-from operation.views import create_operation_record_by_dict
-
+import operation.views
 import threading
 import datetime
 
@@ -159,19 +153,26 @@ def down_cold_tasks(request, platform):
     return response
 
 
-def get_task_macross(platform):
+def get_task_macross(platform, begin_date, end_date):
     ms_list = []
     sql = ""
     
     #reload(sys)
     #sys.setdefaultencoding('utf8')
+    where_condition = ''
+    if(len(begin_date) > 0):
+        begin_time = '%s-%s-%s 00:00:00' % (begin_date[0:4], begin_date[4:6], begin_date[6:8])
+        where_condition += " where create_time >= '%s'" % (begin_time)
+    if(len(end_date) > 0):
+        end_time = '%s-%s-%s 00:00:00' % (end_date[0:4], end_date[4:6], end_date[6:8])
+        where_condition += " and create_time < '%s'" % (end_time)
     
     db = DB_MYSQL()
     db.connect(DB_CONFIG.host, DB_CONFIG.port, DB_CONFIG.user, DB_CONFIG.password, DB_CONFIG.db)
     if(platform == 'mobile'):
-        sql = "select dat_hash, create_time from fs_mobile_dat"
+        sql = "select dat_hash, create_time from fs_mobile_dat" + where_condition
     elif(platform == 'pc'):
-        sql = "select task_hash, create_time from fs_task"    
+        sql = "select task_hash, create_time from fs_task" + where_condition   
     print sql
     db.execute(sql)
     
@@ -247,6 +248,288 @@ def show_task_list(request, platform):
     return HttpResponse(output)
 
 
+def upload_sub_hits_num(platform, previous_day):
+    num_insert2 = 0
+    num_update2 = 0
+    # check if uploaded
+    #     true: sub it,
+    #     false: do nothing.
+    operation_list = operation.views.get_operation_by_type_name(platform, 'upload_hits_num', previous_day)
+    if(len(operation_list) <= 0):
+        print 'sub_hits_num %s not uploaded' % (previous_day)
+        return (True, num_insert2, num_update2)
+        
+    upload_file = ""
+    if(platform == 'mobile'):
+        upload_file = HITS_FILE.template_mobile % (previous_day)
+    elif(platform == 'pc'):
+        upload_file = HITS_FILE.template_pc % (previous_day)
+    print 'sub_hits_num %s' % (upload_file)
+       
+    line_num = 0
+    try:
+        hits_file = open(upload_file, "r")
+    except:            
+        return (False, num_insert2, num_update2)
+        
+    hash_list_local = get_task_local(platform)  
+        
+    content = hits_file.readlines()
+    for line in content:
+        items = line.split(' ')
+        if(len(items) >= 2):
+            hits_num = items[0].strip()
+            hash_id = items[1].strip()
+            print '%s, %s' % (hits_num, hash_id)
+            task_list = hash_list_local.filter(hash=hash_id)
+            if(len(task_list) > 0):
+                print 'update -' 
+                hash_local = task_list[0]
+                if(hash_local.hot > string.atoi(hits_num)): 
+                    hash_local.hot -= string.atoi(hits_num)
+                else:
+                    hash_local.hot = 0                    
+                hash_local.save()
+                num_update2 += 1
+            else:
+                print 'insert -' 
+                num_insert2 += 1
+        line_num += 1
+        #if(line_num > 55):
+        #    break
+    hits_file.close()
+    print 'sub_hits_num line_num=%d, num_insert2=%d, num_update2=%d' % (line_num, num_insert2, num_update2)        
+    return (True, num_insert2, num_update2)
+    
+    
+def upload_add_hits_num(platform, hits_date):
+    num_insert = 0
+    num_update = 0
+    
+    upload_file = ""
+    if(platform == 'mobile'):
+        #upload_file = "/home/xiongming/data_analysis/topdata/mo/logdata/logdata_%s_hashid_sort.result" % (hits_date)
+        upload_file = HITS_FILE.template_mobile % (hits_date)
+    elif(platform == 'pc'):
+        upload_file = HITS_FILE.template_mobile % (hits_date)
+    print 'add_hits_num %s' % (upload_file)
+       
+    hits_time = '%s-%s-%sT12:00:00+00:00' % (hits_date[0:4], hits_date[4:6], hits_date[6:8])  
+        
+    line_num = 0
+    try:
+        hits_file = open(upload_file, "r")
+    except:            
+        return (False, num_insert, num_update)
+        
+    hash_list_local = get_task_local(platform)
+                    
+    content = hits_file.readlines()
+    for line in content:
+        items = line.split(' ')
+        if(len(items) >= 2):
+            hits_num = items[0].strip()
+            hash_id = items[1].strip()
+            print '%s, %s' % (hits_num, hash_id)
+            task_list = hash_list_local.filter(hash=hash_id)
+            if(len(task_list) > 0):
+                #print 'update %s' % (hash_id)
+                hash_local = task_list[0]
+                # if last_hit_time is equal to hits_time, it's updated, then do nothing
+                if(str(hash_local.last_hit_time) != hits_time):
+                    hash_local.hot += string.atoi(hits_num)
+                    # if last_hit_time < hits_time, update last_hit_time
+                    if(cmp(str(hash_local.last_hit_time), hits_time) < 0):
+                        hash_local.last_hit_time = hits_time
+                        hash_local.cold1 = 0.0
+                    hash_local.total_hits_num += string.atoi(hits_num)
+                    hash_local.save()
+                num_update += 1
+            else:
+                print 'insert %s' % (hash_id) 
+                v_hits_num = string.atoi(hits_num)
+                task_insert(platform, hash_id, '2000-01-01T00:00:00+00:00', 1, v_hits_num, 0.0, 0.0, 0.0, hits_time, v_hits_num)
+                num_insert += 1
+        line_num += 1
+        #if(line_num > 55):
+        #    break
+    hits_file.close()        
+    print 'add_hits_num line_num=%d, num_insert=%d, num_update=%d' % (line_num, num_insert, num_update)            
+    return (True, num_insert, num_update)
+
+
+def do_cold(platform, record):
+    num_calc = 0
+    
+    now_time = time.localtime(time.time())        
+    begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+    print 'begin@ %s' % (begin_time)
+    record.begin_time = begin_time
+    record.status = 1
+    record.save()
+    
+    hits_time = time.strftime("%Y-%m-%dT00:00:00+00:00", now_time)   
+    
+    hash_list_local = get_task_local(platform)  
+            
+    #hash_list_cold = hash_list_local.filter(last_hit_time__lte = hits_time)  
+    hash_list_cold = hash_list_local
+    print 'hash_list_cold count %d' % (hash_list_cold.count())
+    for task in hash_list_cold:
+        task.cold1 = day_diff(str(task.last_hit_time), hits_time)
+        print '%d: %s cold1: %f' % (num_calc, task.hash, task.cold1)
+        task.save()
+        num_calc += 1            
+        
+    now_time = time.localtime(time.time())        
+    end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+    print 'end@ %s' % (end_time)
+    output = 'now: %s, ' % (end_time)
+    output += 'num_calc: %d, ' % (num_calc)
+    print output
+    record.end_time = end_time
+    record.status = 2                
+    record.memo = output
+    record.save()
+    return True
+    
+    
+            
+def do_upload(platform, record):
+    now_time = time.localtime(time.time())        
+    begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+    print 'begin@ %s' % (begin_time)
+    record.begin_time = begin_time
+    record.status = 1
+    record.save()
+    
+    hits_date = record.name
+    (result, num_insert, num_update) = upload_add_hits_num(platform, hits_date)
+    #result = True
+    if(result == False):
+        now_time = time.localtime(time.time())        
+        end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+        output = 'now: %s, ' % (end_time)
+        output += 'error@add_hits_num %s' % (hits_date)            
+        print output            
+        record.end_time = end_time
+        record.status = 2
+        record.memo = output
+        record.save()
+        return False
+                 
+    #last = datetime.date(datetime.date.today().year,datetime.date.today().month,1)-datetime.timedelta(1)
+    #print last
+    day_delta = HITS_FILE.hot_period
+    num_year = string.atoi(hits_date[0:4])
+    num_mon = string.atoi(hits_date[4:6])
+    num_day = string.atoi(hits_date[6:8])
+    previous_date = datetime.date(num_year, num_mon, num_day) - datetime.timedelta(days=day_delta)
+    previous_day = '%04d%02d%02d' % (previous_date.year, previous_date.month, previous_date.day)
+        
+    (result, num_insert2, num_update2) = upload_sub_hits_num(platform, previous_day)
+    if(result == False):
+        now_time = time.localtime(time.time())        
+        end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+        output = 'now: %s, ' % (end_time)
+        output += 'error@sub_hits_num %s' % (previous_day)            
+        print output            
+        record.end_time = end_time
+        record.status = 2
+        record.memo = output
+        record.save()
+        return False
+    
+    now_time = time.localtime(time.time())        
+    end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+    print 'end@ %s' % (end_time)
+    output = 'now: %s, ' % (end_time)
+    output += 'num_insert: %d, ' % (num_insert)
+    output += 'num_update: %d, ' % (num_update)
+    output += 'num_insert2: %d, ' % (num_insert2)
+    output += 'num_update2: %d, ' % (num_update2)
+    print output
+    record.end_time = end_time
+    record.status = 2 
+    record.memo = output
+    record.save()
+        
+        
+def do_sync(platform, record):    
+    now_time = time.localtime(time.time())        
+    begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+    print 'begin@%s' % (begin_time)
+    record.begin_time = begin_time
+    record.status = 1
+    record.save()
+    
+    begin_date = ''
+    end_date = ''
+    
+    date_range = record.memo
+    if(len(date_range) > 0):
+        parts = date_range.split('&')
+        date1 = parts[0]
+        date2 = parts[1]   
+        sub_parts = date1.split('=')
+        begin_date = sub_parts[1]        
+        sub_parts = date2.split('=')
+        end_date = sub_parts[1]
+    
+    hash_list_macross = get_task_macross(platform, begin_date, end_date)
+    num_macross = hash_list_macross.__len__()
+    print 'num_macross=%d' % (num_macross)
+    
+    hash_list_local = get_task_local(platform)
+    num_local = hash_list_local.count()
+    print 'num_local=%d' % (num_local)
+    
+    num_insert = 0
+    num_update = 0
+    num_delete = 0
+    
+    #for hash_local in hash_list_local:
+    #    hash_local.is_valid = 0
+    
+    for hash_macross in hash_list_macross:        
+        create_time = '%s+00:00' % (hash_macross['online_time'])
+        print '%s, %s' % (hash_macross['hash'], create_time)
+        #hash_local = task_list_find(hash_list_local, hash_macross['hash'])
+        hash_list = hash_list_local.filter(hash=hash_macross['hash'])
+        if(len(hash_list) <= 0):
+            print 'insert'
+            task_insert(platform, hash_macross['hash'], create_time, 1, 0, 0.0, 0.0, 0.0, create_time, 0)                
+            num_insert += 1
+        else:                
+            if(str(hash_list[0].online_time) != create_time):
+                print 'update, online_time %s != %s' % (str(hash_list[0].online_time), create_time)
+                hash_list[0].online_time = create_time
+                hash_list[0].save()   
+            else:
+                print 'update, do nothing'         
+            num_update += 1
+                
+    #for hash_local in hash_list_local:
+    #    if(hash_local.is_valid == 0):
+    #        hash_local.delete()
+    #        num_delete += 1  
+    
+    now_time = time.localtime(time.time())        
+    end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+    output = 'now: %s, ' % (end_time)
+    output += 'macross: %d, ' % (num_macross)
+    output += 'local: %d, ' % (num_local)
+    output += 'insert: %d, ' % (num_insert)
+    output += 'num_update: %d, ' % (num_update)
+    output += 'num_delete: %d' % (num_delete)
+    print output
+    record.end_time = end_time
+    record.status = 2
+    record.memo = output
+    record.save()
+    return True
+
+    
 class Thread_UPLOAD(threading.Thread):
     platform = ''
     record_list = []
@@ -314,7 +597,7 @@ class Thread_UPLOAD(threading.Thread):
         # check if uploaded
         #     true: sub it,
         #     false: do nothing.
-        operation_list = get_operation_record(self.platform, 'upload_hits_num', previous_day)
+        operation_list = operation.views.get_operation_by_type_name(self.platform, 'upload_hits_num', previous_day)
         if(len(operation_list) <= 0):
             print 'sub_hits_num %s not uploaded' % (previous_day)
             return True;
@@ -363,6 +646,10 @@ class Thread_UPLOAD(threading.Thread):
         return True
     
     def run_record(self, record):
+        result = do_upload(self.platform, record)
+        return result
+        # below will be deleted.
+        
         now_time = time.localtime(time.time())        
         begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
         print 'begin@ %s' % (begin_time)
@@ -425,22 +712,23 @@ class Thread_UPLOAD(threading.Thread):
     def run(self):
         for record in self.record_list:            
             self.run_record(record)
-            
-
-
                 
 
-class Thread_CALC_COLD(threading.Thread):
+class Thread_COLD(threading.Thread):
     platform = ''
     record = None
     num_calc = 0
     
     def __init__(self, the_platform, the_record):
-        super(Thread_CALC_COLD, self).__init__()        
+        super(Thread_COLD, self).__init__()        
         self.platform = the_platform
         self.record = the_record        
             
     def run(self):
+        result = do_cold(self.platform, self.record)
+        return result
+        # below will be deleted.
+        
         now_time = time.localtime(time.time())        
         begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
         print 'begin@ %s' % (begin_time)
@@ -483,6 +771,11 @@ class Thread_SYNC(threading.Thread):
         self.record = the_record        
         
     def run(self):
+        result = do_sync(self.platform, self.record)
+        return result
+        # below will be deleted.
+    
+        '''
         now_time = time.localtime(time.time())        
         begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
         print 'begin@%s' % (begin_time)
@@ -539,12 +832,13 @@ class Thread_SYNC(threading.Thread):
         self.record.memo = output
         self.record.save()
         return True
+        '''
         
 
-def add_record_sync_hash_db(platform, record_list, operation):
-    records = get_operation_undone_by_type(platform, operation['type'])
+def add_record_sync_hash_db(platform, record_list, operation1):
+    records = operation.views.get_operation_undone_by_type(platform, operation1['type'])
     if(len(records) == 0):
-        record = create_operation_record_by_dict(platform, operation)
+        record = operation.views.create_operation_record_by_dict(platform, operation1)
         if(record != None):
             record_list.append(record)
         else:
@@ -594,10 +888,10 @@ def sync_hash_db(request, platform):
 
   
 
-def add_record_upload_hits_num(platform, record_list, operation):
-    records = get_operation_record(platform, operation['type'], operation['name'])
+def add_record_upload_hits_num(platform, record_list, operation1):
+    records = operation.views.get_operation_by_type_name(platform, operation1['type'], operation1['name'])
     if(len(records) == 0):
-        record = create_operation_record_by_dict(platform, operation)
+        record = operation.views.create_operation_record_by_dict(platform, operation1)
         if(record != None):
             record_list.append(record)
         else:
@@ -678,10 +972,10 @@ def upload_hits_num(request, platform):
     return HttpResponse(json.dumps(return_datas))
         
         
-def add_record_calc_cold(platform, record_list, operation):
-    records = get_operation_undone_by_type(platform, operation['type'])
+def add_record_calc_cold(platform, record_list, operation1):
+    records = operation.views.get_operation_undone_by_type(platform, operation1['type'])
     if(len(records) == 0):
-        record = create_operation_record_by_dict(platform, operation)
+        record = operation.views.create_operation_record_by_dict(platform, operation1)
         if(record != None):
             record_list.append(record)
         else:
@@ -722,7 +1016,7 @@ def calc_cold(request, platform):
     
     if(start_now == True):
         # start thread.
-        t = Thread_CALC_COLD(platform, record_list[0])            
+        t = Thread_COLD(platform, record_list[0])            
         t.start()
         
     return_datas['success'] = True

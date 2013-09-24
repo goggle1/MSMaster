@@ -8,9 +8,7 @@ import models
 import time
 import string
 from DB.db import *
-from operation.views import get_operation_record
-from operation.views import get_operation_record_undone
-from operation.views import create_operation_record
+import operation.views
 import threading
 
 def ms_insert(platform, v_server_id, v_server_name, v_server_ip, v_server_port, v_controll_ip, v_controll_port, v_room_id, v_room_name, v_server_version, \
@@ -357,9 +355,9 @@ def sync_ms_db(request, platform):
     operation['user'] = request.user.username
         
     output = ''
-    records = get_operation_record_undone(platform, operation['type'], operation['name'])
+    records = operation.views.get_operation_record_undone(platform, operation['type'], operation['name'])
     if(len(records) == 0):
-        record = create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time)
+        record = operation.views.create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time)
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.
@@ -386,9 +384,9 @@ def sync_ms_status(request, platform):
     operation['user'] = request.user.username
         
     output = ''
-    records = get_operation_record_undone(platform, operation['type'], operation['name'])
+    records = operation.views.get_operation_record_undone(platform, operation['type'], operation['name'])
     if(len(records) == 0):
-        record = create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time)
+        record = operation.views.create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time)
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.

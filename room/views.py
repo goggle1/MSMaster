@@ -10,9 +10,10 @@ import string
 from DB.db import *
 from MS.models import mobile_ms_server
 from MS.models import pc_ms_server
-from operation.views import get_operation_record
-from operation.views import get_operation_record_undone
-from operation.views import create_operation_record
+import operation.views
+#from operation.views import get_operation_record
+#from operation.views import get_operation_record_undone
+#from operation.views import create_operation_record
 from task.views import get_task_local
 import threading
 from ms import *
@@ -428,9 +429,9 @@ def sync_room_db(request, platform):
     operation['user'] = request.user.username
         
     output = ''
-    records = get_operation_record_undone(platform, operation['type'], operation['name'])
+    records = operation.views.get_operation_record_undone(platform, operation['type'], operation['name'])
     if(len(records) == 0):
-        record = create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time)
+        record = operation.views.create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time)
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.
@@ -463,9 +464,9 @@ def add_hot_tasks(request, platform):
     operation['memo'] = num_dispatching
         
     output = ''
-    records = get_operation_record_undone(platform, operation['type'], operation['name'])
+    records = operation.views.get_operation_record_undone(platform, operation['type'], operation['name'])
     if(len(records) == 0):
-        record = create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time, operation['memo'])
+        record = operation.views.create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time, operation['memo'])
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.
@@ -497,9 +498,9 @@ def delete_cold_tasks(request, platform):
     operation['memo'] = num_deleting
         
     output = ''
-    records = get_operation_record_undone(platform, operation['type'], operation['name'])
+    records = operation.views.get_operation_record_undone(platform, operation['type'], operation['name'])
     if(len(records) == 0):
-        record = create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time, operation['memo'])
+        record = operation.views.create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time, operation['memo'])
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.
@@ -530,9 +531,9 @@ def sync_room_status(request, platform):
     operation['memo'] = ids
         
     output = ''
-    records = get_operation_record_undone(platform, operation['type'], operation['name'])
+    records = operation.views.get_operation_record_undone(platform, operation['type'], operation['name'])
     if(len(records) == 0):
-        record = create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time, operation['memo'])
+        record = operation.views.create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time, operation['memo'])
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.

@@ -91,12 +91,12 @@ var operationJS = function(){
 				id: 'do_selected_operations',
 				text: '执行选中操作',				
 				iconCls: 'confirm',
-				handler: self.show_operation_detail
+				handler: self.do_selected_operations
 			},'-',{
 				id: 'do_all_operations',
 				text: '执行全部操作',				
 				iconCls: 'check',
-				handler: self.show_operation_detail
+				handler: self.do_all_operations
 			},'-',{
 				id: 'show_operation_detail',
 				text: '操作详细信息',				
@@ -170,6 +170,59 @@ var operationJS = function(){
 	{		
 		self.operation_store.reload();
 	}
+	
+	this.do_selected_operations = function() {
+		var grid = self.operation_grid;
+		var t_sm = grid.getSelectionModel();
+
+		//此处为多选行，如果没有选中任意一行时，需要对右键当前行进行选中设置
+		//如果右键当前行不在选中的行中，则移除所选的行，选择当前行
+		var operation_ids = []
+		if (t_sm.getSelected()) 
+		{
+			var recs = t_sm.getSelections();
+			for (var i = 0; i < recs.length; i++) 
+			{
+				operation_ids.push(recs[i].get('id'));
+			}
+		}
+		else
+		{
+			return;
+		}
+		//console.log(ms_ips);
+
+		Ext.Ajax.request({
+			url: '/do_selected_operations/' + self.plat + '/',				
+			params: 'ids=' + operation_ids,
+			success: function(response) {
+				Ext.MessageBox.alert('成功', response.responseText);						
+				
+			},
+			failure: function(response){
+				Ext.MessageBox.alert('失败', response.responseText);
+			}
+			//timeout: (this.timeout*1000);
+		});
+
+	};
+	
+	this.do_all_operations = function() {
+		
+		Ext.Ajax.request({
+			url: '/do_all_operations/' + self.plat + '/',				
+			params: '',
+			success: function(response) {
+				Ext.MessageBox.alert('成功', response.responseText);						
+				
+			},
+			failure: function(response){
+				Ext.MessageBox.alert('失败', response.responseText);
+			}
+			//timeout: (this.timeout*1000);
+		});
+
+	};
 
 	this.show_operation_detail = function() {
 		var grid = self.operation_grid;
