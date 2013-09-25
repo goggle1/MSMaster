@@ -96,20 +96,20 @@ def get_operation_list(request, platform):
     if 'dir' in request.REQUEST:
         dire   = request.REQUEST['dir']
             
-    order_by = ''
+    order_condition = ''
     if(len(dire) > 0):
         if(dire == 'ASC'):
-            order_by += ''
+            order_condition += ''
         elif(dire == 'DESC'):
-            order_by += '-'
+            order_condition += '-'
                 
     if(len(sort) > 0):
-        order_by += sort
+        order_condition += sort
     
     operations = get_operation_local(platform)
     operations2 = []
-    if(len(order_by) > 0):
-        operations2 = operations.order_by(order_by)[start_index:start_index+limit_num]
+    if(len(order_condition) > 0):
+        operations2 = operations.order_by(order_condition)[start_index:start_index+limit_num]
     else:
         operations2 = operations[start_index:start_index+limit_num]
     
@@ -138,6 +138,8 @@ def show_operation_list(request, platform):
         
     return HttpResponse(output)
 
+
+g_thread = None
 
 class Thread_JOBS(threading.Thread):
     platform = ''
@@ -169,16 +171,18 @@ class Thread_JOBS(threading.Thread):
         # 3. calc_cold
         # todo:
         for operation in self.operation_list:
-            self.run_operation(operation)
+            self.run_operation(operation)  
+        global g_thread      
+        g_thread = None
 
 
-def operation_type_int(type):
+def operation_type_int(v_type):
     result = 0
-    if(type == 'sync_hash_db'):
+    if(v_type == 'sync_hash_db'):
         result = 1
-    elif(type == 'upload_hits_num'):
+    elif(v_type == 'upload_hits_num'):
         result = 2
-    elif(type == 'calc_cold'):
+    elif(v_type == 'calc_cold'):
         result = 3
     return result
 
@@ -195,6 +199,7 @@ def operation_cmp(op1, op2):
         else:
             return 1
             
+
     
 def do_selected_operations(request, platform):  
     output = ''
@@ -214,11 +219,16 @@ def do_selected_operations(request, platform):
     print 'after:'
     for op in operation_list:
         print '%s %s' % (op.type, op.name)
-        
-    t = Thread_JOBS(platform, operation_list)            
-    t.start()
+    
+    global g_thread
+    if(g_thread == None):    
+        g_thread = Thread_JOBS(platform, operation_list)            
+        g_thread.start()
+        output += 'do %s' % (ids)
+    else:
+        output += 'Thread_JOBS has started!'
              
-    output += 'do %s' % (ids)    
+        
     return HttpResponse(output)
 
 
@@ -237,10 +247,14 @@ def do_all_operations(request, platform):
     for op in operation_list:
         print '%s %s' % (op.type, op.name)
     
-    t = Thread_JOBS(platform, operation_list)            
-    t.start()
-    
-    output += 'do '  
-    for operation in operation_list:      
-        output += '%s,' % (str(operation.id))    
+    global g_thread
+    if(g_thread == None):
+        g_thread = Thread_JOBS(platform, operation_list)            
+        g_thread.start()    
+        output += 'do '  
+        for operation in operation_list:      
+            output += '%s,' % (str(operation.id))
+    else:
+        output += 'Thread_JOBS has started!'
+            
     return HttpResponse(output)    

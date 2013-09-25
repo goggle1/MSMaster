@@ -41,3 +41,11 @@ urlpatterns = patterns('',
     url(r'^do_selected_operations/([^/]+)/$',   'operation.views.do_selected_operations'),
     url(r'^do_all_operations/([^/]+)/$',        'operation.views.do_all_operations'),
 )
+
+from django.conf import settings
+if settings.DEBUG is False:
+    urlpatterns += patterns('',
+        url(r'^static/(?P<path>.*)$', 'django.views.static.serve', {
+            'document_root': settings.STATIC_ROOT,
+        }),
+   )

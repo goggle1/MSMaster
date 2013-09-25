@@ -133,20 +133,20 @@ def get_ms_list(request, platform):
     if 'dir' in request.REQUEST:
         dire   = request.REQUEST['dir']
             
-    order_by = ''
+    order_condition = ''
     if(len(dire) > 0):
         if(dire == 'ASC'):
-            order_by += ''
+            order_condition += ''
         elif(dire == 'DESC'):
-            order_by += '-'
+            order_condition += '-'
                 
     if(len(sort) > 0):
-        order_by += sort
+        order_condition += sort
     
     servers = get_ms_local(platform)    
     servers2 = []
-    if(len(order_by) > 0):
-        servers2 = servers.order_by(order_by)[start_index:start_index+limit_num]
+    if(len(order_condition) > 0):
+        servers2 = servers.order_by(order_condition)[start_index:start_index+limit_num]
     else:
         servers2 = servers[start_index:start_index+limit_num]
     

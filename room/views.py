@@ -14,7 +14,7 @@ import operation.views
 #from operation.views import get_operation_record
 #from operation.views import get_operation_record_undone
 #from operation.views import create_operation_record
-from task.views import get_task_local
+from task.views import get_tasks_local
 import threading
 from ms import *
 from MS.views import get_ms_status
@@ -94,20 +94,20 @@ def get_room_list(request, platform):
     if 'dir' in request.REQUEST:
         dire   = request.REQUEST['dir']
             
-    order_by = ''
+    order_condition = ''
     if(len(dire) > 0):
         if(dire == 'ASC'):
-            order_by += ''
+            order_condition += ''
         elif(dire == 'DESC'):
-            order_by += '-'
+            order_condition += '-'
                 
     if(len(sort) > 0):
-        order_by += sort
+        order_condition += sort
     
     rooms = get_room_local(platform) 
     rooms2 = []
-    if(len(order_by) > 0):
-        rooms2 = rooms.order_by(order_by)[start_index:start_index+limit_num]
+    if(len(order_condition) > 0):
+        rooms2 = rooms.order_by(order_condition)[start_index:start_index+limit_num]
     else:
         rooms2 = rooms[start_index:start_index+limit_num]
     
@@ -259,7 +259,7 @@ class Thread_ADD_HOT_TASKS(threading.Thread):
             
         num = 0
         result = False
-        tasks = get_task_local(self.platform) 
+        tasks = get_tasks_local(self.platform) 
         print 'tasks count: %d' % (tasks.count())
         hot_tasks = tasks.order_by('-hot')
         print 'hot_tasks count: %d' % (hot_tasks.count())
@@ -338,7 +338,7 @@ class Thread_DELETE_COLD_TASKS(threading.Thread):
             
         num = 0
         result = False
-        tasks = get_task_local(self.platform) 
+        tasks = get_tasks_local(self.platform) 
         print 'tasks count: %d' % (tasks.count())
         cold_tasks = tasks.order_by('cold1')
         print 'cold_tasks count: %d' % (cold_tasks.count())
