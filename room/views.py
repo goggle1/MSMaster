@@ -261,7 +261,8 @@ class Thread_ADD_HOT_TASKS(threading.Thread):
         result = False
         tasks = get_tasks_local(self.platform) 
         print 'tasks count: %d' % (tasks.count())
-        hot_tasks = tasks.order_by('-hot')
+        #hot_tasks = tasks.order_by('-hot')
+        hot_tasks = tasks.filter(hot__gt=0).order_by('-hot')
         print 'hot_tasks count: %d' % (hot_tasks.count())
         for task in hot_tasks:
             print 'hot task: %d %s' % (task.hot, task.hash)

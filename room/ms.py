@@ -95,22 +95,21 @@ class MS_ALL:
             $t：热门任务的hashid hashid,hashid,hashid[,hashid,……],hashid统一使用大写
             $sign：验证码；sign=md5(msreport_hot_task$server_id$priority$ctime$t$key),sign统一为小写
     '''
-    def dispatch_to_ms(self, one):
+    def dispatch_batch(self, one, batch_list):
         cmd = 'report_hot_task'
-        
         server_id = one.db_record.server_id
         priority = 1
         ctime = int(time.time())        
         t = ''
         key = ''
-        sign = ''    
+        sign = ''  
         
         num = 0
-        for task_hash in one.change_list:
+        for task_hash in batch_list:
             if(num > 0):
                 t += ','
             t += task_hash
-            num += 1 
+            num += 1
             
         src = ''
         src += cmd
@@ -128,9 +127,11 @@ class MS_ALL:
         values['t']         = t
         values['sign']      = sign
         
-        macross_ip = '192.168.160.128'
-        macross_port = 80
-        url = 'http://%s:%d/api?cli=ms&cmd=report_hot_task' % (macross_ip, macross_port)
+        MACROSS_IP = '192.168.160.128'
+        MACROSS_PORT = 80
+        url = 'http://%s:%d/api/?cli=ms&cmd=report_hot_task' % (MACROSS_IP, MACROSS_PORT)
+        print url
+        print 'num=%d' % (num)
         
         data = urllib.urlencode(values)
         print data
@@ -139,8 +140,26 @@ class MS_ALL:
         the_page = response.read()
         print the_page
         
-        return True
+        return True        
         
+        
+    def dispatch_to_ms(self, one):        
+        BATCH_NUM = 2000                 
+        
+        num = 0
+        batch_list = []
+        for task_hash in one.change_list:
+            batch_list.append(task_hash)
+            num += 1 
+            if(num>=BATCH_NUM):
+                self.dispatch_batch(one, batch_list)                
+                num = 0
+                batch_list = []
+        
+        if(num > 0):
+            self.dispatch_batch(one, batch_list)
+               
+        return True
         
     
     def do_dispatch(self):        
