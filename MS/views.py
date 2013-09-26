@@ -349,15 +349,17 @@ def sync_ms_db(request, platform):
     today = time.strftime("%Y-%m-%d", now_time)
     dispatch_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
     
-    operation = {}
-    operation['type'] = 'sync_ms_db'
-    operation['name'] = today
-    operation['user'] = request.user.username
+    operation1 = {}
+    operation1['type'] = 'sync_ms_db'
+    operation1['name'] = today
+    operation1['user'] = request.user.username
+    operation1['dispatch_time'] = dispatch_time
+    operation1['memo'] = ''
         
     output = ''
-    records = operation.views.get_operation_record_undone(platform, operation['type'], operation['name'])
+    records = operation.views.get_operation_undone_by_type(platform, operation1['type'])
     if(len(records) == 0):
-        record = operation.views.create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time)
+        record = operation.views.create_operation_record_by_dict(platform, operation1)
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.
@@ -368,7 +370,7 @@ def sync_ms_db(request, platform):
             output += 'operation exist, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
     
     return HttpResponse(output) 
-	 
+
 
 def sync_ms_status(request, platform):  
     print 'sync_ms_status'
@@ -378,15 +380,17 @@ def sync_ms_status(request, platform):
     today = time.strftime("%Y-%m-%d", now_time)
     dispatch_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
     
-    operation = {}
-    operation['type'] = 'sync_ms_status'
-    operation['name'] = today
-    operation['user'] = request.user.username
+    operation1 = {}
+    operation1['type'] = 'sync_ms_status'
+    operation1['name'] = today
+    operation1['user'] = request.user.username
+    operation1['dispatch_time'] = dispatch_time
+    operation1['memo'] = ''
         
     output = ''
-    records = operation.views.get_operation_record_undone(platform, operation['type'], operation['name'])
+    records = operation.views.get_operation_undone_by_type(platform, operation1['type'])
     if(len(records) == 0):
-        record = operation.views.create_operation_record(platform, operation['type'], operation['name'], operation['user'], dispatch_time)
+        record = operation.views.create_operation_record_by_dict(platform, operation1)
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.

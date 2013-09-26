@@ -1,10 +1,14 @@
 #coding=utf-8
+import time
+import urllib
 import urllib2
+import hashlib
 
 class MS_INFO:
     platform = ''
     db_record = None
-    task_list = []
+    #task_list = []
+    task_dict = {}
     change_list = []
     
     def __init__(self, v_platform, v_db_record):
@@ -46,24 +50,28 @@ class MS_ALL:
                         for value in values:
                             items = value.split(':')
                             if(len(items) >= 7):
-                                one.task_list.append(items[5])
+                                #one.task_list.append(items[5])
+                                one.task_dict[items[5]] = '1'
                                 #print '%s append task %s' % (one.db_record.controll_ip, items[5])
             except:
                 print '%s get tasks error' % (one.db_record.controll_ip)
-            print '%s get tasks end, %d' % (one.db_record.controll_ip, len(one.task_list))    
+            #print '%s get tasks end, %d' % (one.db_record.controll_ip, len(one.task_list))    
+            print '%s get tasks end, %d' % (one.db_record.controll_ip, len(one.task_dict))
             
         return True
     
     
     def find_task(self, task_hash):
-        result = False
-    
+        '''
         for one in self.ms_list:
             for hash_id in one.task_list:
                 if(hash_id == task_hash):
                     return True
-            
-        return result
+        '''
+        for one in self.ms_list:
+            if(one.task_dict.has_key(task_hash)):
+                return True            
+        return False
     
     
     def dispatch_task(self, task_hash):        
@@ -76,6 +84,70 @@ class MS_ALL:
             self.round_robin_index = 0    
             
         return True
+    
+    '''
+    http://MacrossAddress[:MacrossPort]/api?cli=ms&cmd=report_hot_task
+            提交方式：POST
+            参数说明：
+            $server_id：设备id
+            $priority：处理的优先级权重,范围1~10，默认为1
+            $ctime：当前时间戳，单位：秒
+            $t：热门任务的hashid hashid,hashid,hashid[,hashid,……],hashid统一使用大写
+            $sign：验证码；sign=md5(msreport_hot_task$server_id$priority$ctime$t$key),sign统一为小写
+    '''
+    def dispatch_to_ms(self, one):
+        cmd = 'report_hot_task'
+        
+        server_id = one.db_record.server_id
+        priority = 1
+        ctime = int(time.time())        
+        t = ''
+        key = ''
+        sign = ''    
+        
+        num = 0
+        for task_hash in one.change_list:
+            if(num > 0):
+                t += ','
+            t += task_hash
+            num += 1 
+            
+        src = ''
+        src += cmd
+        src += str(server_id)
+        src += str(priority)
+        src += str(ctime)
+        src += t
+        src += key
+        sign = hashlib.md5(src).hexdigest().upper()
+        
+        values = {}
+        values['server_id'] = str(server_id)
+        values['priority']  = str(priority)
+        values['ctime']     = str(ctime)
+        values['t']         = t
+        values['sign']      = sign
+        
+        macross_ip = '192.168.160.128'
+        macross_port = 80
+        url = 'http://%s:%d/api?cli=ms&cmd=report_hot_task' % (macross_ip, macross_port)
+        
+        data = urllib.urlencode(values)
+        print data
+        req = urllib2.Request(url, data)
+        response = urllib2.urlopen(req)
+        the_page = response.read()
+        print the_page
+        
+        return True
+        
+        
+    
+    def do_dispatch(self):        
+        for one in self.ms_list:
+            self.dispatch_to_ms(one)
+        return True
+                
     
     
     def get_cur_ms(self):

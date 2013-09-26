@@ -153,8 +153,8 @@ class Thread_JOBS(threading.Thread):
     
     def run_operation(self, operation):
         result = False
-        if(operation.status != models.STATUS_DISPATCHED):
-            return False
+        if(operation.status == models.STATUS_DONE):
+            return True
         if(operation.type == 'sync_hash_db'):
             result = task.views.do_sync(self.platform, operation)
         elif(operation.type == 'upload_hits_num'):
