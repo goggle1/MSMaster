@@ -2,13 +2,18 @@
 import MySQLdb
 
 class DB_MYSQL :
-    conn = None
-    cur = None
+    
+    def __init__(self):
+        self.conn = None
+        self.cur = None
+        
     def connect(self, host, port, user, passwd, db, charset='utf8') :
         self.conn = MySQLdb.connect(host, user, passwd, db, port, charset='utf8')
         self.cur  = self.conn.cursor()
+        
     def execute(self, sql):           
         self.cur.execute(sql)
+        
     def close(self):
         self.cur.close()
         self.conn.close()

@@ -356,10 +356,13 @@ def upload_add_hits_num(platform, hits_date):
                 #print 'update %s' % (hash_id)
                 hash_local = task_list[0]
                 # if last_hit_time is equal to hits_time, it's updated, then do nothing
+                print '%s ? %s' % (str(hash_local.last_hit_time), hits_time)
                 if(str(hash_local.last_hit_time) != hits_time):
                     hash_local.hot += string.atoi(hits_num)
                     # if last_hit_time < hits_time, update last_hit_time
-                    if(cmp(str(hash_local.last_hit_time), hits_time) < 0):
+                    compare_r = cmp(str(hash_local.last_hit_time), hits_time)
+                    print 'cmp %s ? %s return %d' % (str(hash_local.last_hit_time), hits_time, compare_r)
+                    if(hash_local.last_hit_time == None) or (compare_r < 0):
                         hash_local.last_hit_time = hits_time
                         hash_local.cold1 = 0.0
                     hash_local.total_hits_num += string.atoi(hits_num)
@@ -397,7 +400,10 @@ def do_cold(platform, record):
     hash_list_cold = hash_list_local
     print 'hash_list_cold count %d' % (hash_list_cold.count())
     for task in hash_list_cold:
-        task.cold1 = day_diff(str(task.last_hit_time), hits_time)
+        last_hit_time = task.last_hit_time
+        if(last_hit_time == None) or (last_hit_time == ''):
+            last_hit_time = task.online_time
+        task.cold1 = day_diff(str(last_hit_time), hits_time)
         print '%d: %s cold1: %f' % (num_calc, task.hash, task.cold1)
         task.save()
         num_calc += 1            
@@ -550,17 +556,21 @@ def do_sync(platform, record):
 
     
 class Thread_UPLOAD(threading.Thread):
-    platform = ''
-    record_list = []
-    num_insert = 0
-    num_update = 0
-    num_insert2 = 0
-    num_update2 = 0
+    #platform = ''
+    #record_list = []
+    #num_insert = 0
+    #num_update = 0
+    #num_insert2 = 0
+    #num_update2 = 0
     
     def __init__(self, v_platform, v_record_list):
         super(Thread_UPLOAD, self).__init__()        
         self.platform = v_platform
-        self.record_list = v_record_list        
+        self.record_list = v_record_list   
+        self.num_insert = 0
+        self.num_update = 0
+        self.num_insert2 = 0
+        self.num_update2 = 0     
         
       
     def run_record(self, record):
@@ -574,14 +584,15 @@ class Thread_UPLOAD(threading.Thread):
                 
 
 class Thread_COLD(threading.Thread):
-    platform = ''
-    record = None
-    num_calc = 0
+    #platform = ''
+    #record = None
+    #num_calc = 0
     
     def __init__(self, the_platform, the_record):
         super(Thread_COLD, self).__init__()        
         self.platform = the_platform
-        self.record = the_record        
+        self.record = the_record   
+        self.num_calc = 0     
             
     def run(self):
         result = do_cold(self.platform, self.record)
@@ -589,8 +600,8 @@ class Thread_COLD(threading.Thread):
 
 
 class Thread_SYNC(threading.Thread):
-    platform = ''
-    record = None
+    #platform = ''
+    #record = None
     
     def __init__(self, the_platform, the_record):
         super(Thread_SYNC, self).__init__()        
@@ -713,6 +724,10 @@ def upload_hits_num(request, platform):
     day_num = 0
     operation['name'] = '%04d%02d%02d' % (begin_day.year, begin_day.month, begin_day.day)
     result = add_record_upload_hits_num(platform, record_list, operation)
+    if(result == False):
+        return_datas['success'] = False
+        return_datas['data'] = 'date %s error' % (operation['name'])  
+        return HttpResponse(json.dumps(return_datas))
     day_num += 1    
     while(True):
         d1 = begin_day
@@ -725,7 +740,7 @@ def upload_hits_num(request, platform):
             result = add_record_upload_hits_num(platform, record_list, operation)
             if(result == False):
                 return_datas['success'] = False
-                return_datas['data'] = 'date %s error' % (begin_date)  
+                return_datas['data'] = 'date %s error' % (operation['name'])  
                 return HttpResponse(json.dumps(return_datas))
         day_num += 1 
             

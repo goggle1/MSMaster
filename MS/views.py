@@ -77,7 +77,7 @@ def get_ms_macross(platform):
     #db.connect("192.168.8.101", 3317, "public", "funshion", "macross")
     db.connect(DB_CONFIG.host, DB_CONFIG.port, DB_CONFIG.user, DB_CONFIG.password, DB_CONFIG.db)
     if(platform == 'mobile'):
-        sql = "select s.server_id, s.server_name, s.server_ip, s.server_port, s.controll_ip, s.controll_port, s.ml_room_id, l.room_name, s.server_version, s.protocol_version, s.is_valid from fs_server s, fs_server_location l where s.ml_room_id=l.room_id and s.is_valid=1 order by s.server_id"
+        sql = "select s.server_id, s.server_name, s.server_ip, s.server_port, s.controll_ip, s.controll_port, s.ml_room_id, l.room_name, s.server_version, s.protocol_version, s.is_valid from fs_server s, fs_mobile_location l where s.ml_room_id=l.room_id and s.is_valid=1 order by s.server_id"
     elif(platform == 'pc'):
         sql = "select s.server_id, s.server_name, s.server_ip, s.server_port, s.controll_ip, s.controll_port, s.room_id, l.room_name, s.server_version, s.protocol_version, s.is_valid from fs_server s, fs_server_location l where s.room_id=l.room_id and s.is_valid=1 order by s.server_id"    
     db.execute(sql)
@@ -232,11 +232,11 @@ def ms_list_find(ms_list, server_id):
 
 
 class Thread_SYNC_MS_DB(threading.Thread):
-    platform = ''
-    record = None
+    #platform = ''
+    #record = None
     
     def __init__(self, the_platform, the_record):
-        super(Thread_SYNC_MS_DB, self).__init__()        
+        super(Thread_SYNC_MS_DB, self).__init__()
         self.platform = the_platform
         self.record = the_record
         
@@ -304,8 +304,8 @@ class Thread_SYNC_MS_DB(threading.Thread):
         
             
 class Thread_SYNC_MS_STATUS(threading.Thread):
-    platform = ''
-    record = None
+    #platform = ''
+    #record = None
     
     def __init__(self, the_platform, the_record):
         super(Thread_SYNC_MS_STATUS, self).__init__()        

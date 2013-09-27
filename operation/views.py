@@ -9,6 +9,8 @@ import threading
 import time
 #from task.views import do_sync
 import task.views
+import room.views
+
 
 def get_operation_record(platform, v_type, v_name):
     records = []
@@ -142,8 +144,8 @@ def show_operation_list(request, platform):
 g_thread = None
 
 class Thread_JOBS(threading.Thread):
-    platform = ''
-    operation_list = []
+    #platform = ''
+    #operation_list = []
     
     def __init__(self, v_platform, operation_list):
         super(Thread_JOBS, self).__init__()        
@@ -161,6 +163,11 @@ class Thread_JOBS(threading.Thread):
             result = task.views.do_upload(self.platform, operation)
         elif(operation.type == 'calc_cold'):
             result = task.views.do_cold(self.platform, operation)
+        elif(operation.type == 'add_hot_tasks'):
+            result = room.views.do_add_hot_tasks(self.platform, operation)
+        else:
+            print 'unknown operation type: %s' % (operation.type)
+            
         return result
             
             
@@ -177,6 +184,8 @@ class Thread_JOBS(threading.Thread):
 
 
 def operation_type_int(v_type):
+    # todo:
+    # dict = { 'sync_hash_db':1, 'upload_hits_num':2, }
     result = 0
     if(v_type == 'sync_hash_db'):
         result = 1
