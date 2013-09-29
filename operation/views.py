@@ -184,15 +184,13 @@ class Thread_JOBS(threading.Thread):
 
 
 def operation_type_int(v_type):
-    # todo:
-    # dict = { 'sync_hash_db':1, 'upload_hits_num':2, }
     result = 0
-    if(v_type == 'sync_hash_db'):
-        result = 1
-    elif(v_type == 'upload_hits_num'):
-        result = 2
-    elif(v_type == 'calc_cold'):
-        result = 3
+    type_dict = {   'sync_hash_db':1,       \
+                    'upload_hits_num':2,    \
+                    'calc_cold':3           \
+                }
+    if(type_dict.has_key(v_type) == True):
+        result = type_dict[v_type]        
     return result
 
             

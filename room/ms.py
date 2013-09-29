@@ -79,6 +79,13 @@ class MS_ALL:
         return True
     
     
+    def get_tasks_num(self):
+        total_num = 0
+        for one in self.ms_list:
+            total_num += len(one.task_dict)
+        return total_num
+            
+            
     def find_task(self, task_hash):
         '''
         for one in self.ms_list:
@@ -95,9 +102,12 @@ class MS_ALL:
     def dispatch_hot_task(self, task_hash):   
         # find_availiable_ms 
         the_ms = None
-        index = 0    
+        ms_index = 0    
         for index in range(0, len(self.ms_list)):
-            the_ms = self.ms_list[self.round_robin_index + index]
+            ms_index = self.round_robin_index + index
+            if(ms_index >= len(self.ms_list)):
+                ms_index = ms_index % len(self.ms_list)
+            the_ms = self.ms_list[ms_index]
             if(the_ms.db_record.is_dispatch == 1):
                 break
             else:
@@ -105,8 +115,7 @@ class MS_ALL:
         if(the_ms == None):
             return None
         the_ms.change_list.append(task_hash)
-        self.round_robin_index += index
-        self.round_robin_index += 1
+        self.round_robin_index = ms_index
         return the_ms
         
     
@@ -158,10 +167,10 @@ class MS_ALL:
         values['t']         = t
         values['sign']      = sign
         
-        #MACROSS_IP = '192.168.160.128'
-        #MACROSS_PORT = 80
-        MACROSS_IP = 'macross.funshion.com'
-        MACROSS_PORT = 27777
+        MACROSS_IP = '192.168.160.128'
+        MACROSS_PORT = 80
+        #MACROSS_IP = 'macross.funshion.com'
+        #MACROSS_PORT = 27777
         url = 'http://%s:%d/api/?cli=ms&cmd=report_hot_task' % (MACROSS_IP, MACROSS_PORT)
         print url
         print 'num=%d' % (num)
@@ -243,10 +252,10 @@ class MS_ALL:
         values['t']         = t
         values['sign']      = sign
         
-        #MACROSS_IP = '192.168.160.128'
-        #MACROSS_PORT = 80
-        MACROSS_IP = 'macross.funshion.com'
-        MACROSS_PORT = 27777
+        MACROSS_IP = '192.168.160.128'
+        MACROSS_PORT = 80
+        #MACROSS_IP = 'macross.funshion.com'
+        #MACROSS_PORT = 27777
         url = 'http://%s:%d/api/?cli=ms&cmd=report_cold_task' % (MACROSS_IP, MACROSS_PORT)
         print url
         print 'num=%d' % (num)
