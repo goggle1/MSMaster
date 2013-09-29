@@ -90,24 +90,31 @@ class MS_ALL:
             if(one.task_dict.has_key(task_hash)):
                 return one            
         return None
-    
-    
-    def dispatch_hot_task(self, task_hash):        
-        one = self.ms_list[self.round_robin_index]
-        one.change_list.append(task_hash)
-        print '%s dispatch task %s' % (one.db_record.controll_ip, task_hash)
-        
-        self.round_robin_index += 1
-        if(self.round_robin_index >= len(self.ms_list)):
-            self.round_robin_index = 0    
             
-        return True
+        
+    def dispatch_hot_task(self, task_hash):   
+        # find_availiable_ms 
+        the_ms = None
+        index = 0    
+        for index in range(0, len(self.ms_list)):
+            the_ms = self.ms_list[self.round_robin_index + index]
+            if(the_ms.db_record.is_dispatch == 1):
+                break
+            else:
+                print '%d: %s is_dispatched is %d' % (index, str(the_ms.db_record.controll_ip), the_ms.db_record.is_dispatch)
+        if(the_ms == None):
+            return None
+        the_ms.change_list.append(task_hash)
+        self.round_robin_index += index
+        self.round_robin_index += 1
+        return the_ms
+        
     
     def delete_cold_task(self, one_ms, task_hash): 
         one_ms.change_list.append(task_hash)
-        print '%s delete task %s' % (one_ms.db_record.controll_ip, task_hash)
-            
+        print '%s delete task %s' % (one_ms.db_record.controll_ip, task_hash)            
         return True
+    
     
     '''
     http://MacrossAddress[:MacrossPort]/api/?cli=ms&cmd=report_hot_task

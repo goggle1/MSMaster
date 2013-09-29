@@ -7,9 +7,10 @@ import models
 import string
 import time
 import sys
+import DB.db
 #from DB.db import DB_MYSQL
 #from DB.db import DB_CONFIG
-from DB.db import *
+#from DB.db import *
 import operation.views
 import threading
 import datetime
@@ -176,8 +177,8 @@ def get_tasks_macross(platform, begin_date, end_date):
         end_time = '%s-%s-%s 00:00:00' % (end_date[0:4], end_date[4:6], end_date[6:8])
         where_condition += " and create_time < '%s'" % (end_time)
     
-    db = DB_MYSQL()
-    db.connect(DB_CONFIG.host, DB_CONFIG.port, DB_CONFIG.user, DB_CONFIG.password, DB_CONFIG.db)
+    db = DB.db.DB_MYSQL()
+    db.connect(DB.db.DB_CONFIG.host, DB.db.DB_CONFIG.port, DB.db.DB_CONFIG.user, DB.db.DB_CONFIG.password, DB.db.DB_CONFIG.db)
     if(platform == 'mobile'):
         sql = "select dat_hash, create_time from fs_mobile_dat" + where_condition
     elif(platform == 'pc'):
@@ -217,9 +218,9 @@ def show_task_list(request, platform):
     #reload(sys)
     #sys.setdefaultencoding('utf8')
     
-    db = DB_MYSQL()
+    db = DB.db.DB_MYSQL()
     #db.connect("192.168.8.101", 3317, "public", "funshion", "macross")
-    db.connect(DB_CONFIG.host, DB_CONFIG.port, DB_CONFIG.user, DB_CONFIG.password, DB_CONFIG.db)
+    db.connect(DB.db.DB_CONFIG.host, DB.db.DB_CONFIG.port, DB.db.DB_CONFIG.user, DB.db.DB_CONFIG.password, DB.db.DB_CONFIG.db)
     if(platform == 'mobile'):
         sql = 'select dat_hash, cid, serialid, media_id, dat_name from fs_mobile_dat where dat_hash='
     elif(platform == 'pc'):

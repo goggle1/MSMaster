@@ -2,7 +2,7 @@
 from django.db import models
 # Create your models here.
 
-class mobile_ms_server(models.Model):
+class mobile_ms(models.Model):
     # config
     server_id       = models.IntegerField(blank = False, primary_key=True, verbose_name = u"server_id")
     server_name     = models.CharField(max_length=32, verbose_name = u"server_name")   
@@ -18,6 +18,8 @@ class mobile_ms_server(models.Model):
     password        = models.CharField(null = True, max_length=32, verbose_name = u"password")    
     # status 
     is_valid        = models.IntegerField(blank = False, null = True, verbose_name = u"is_valid") 
+    is_dispatch     = models.IntegerField(blank = False, null = True, verbose_name = u"is_dispatch") 
+    is_pause        = models.IntegerField(blank = False, null = True, verbose_name = u"is_pause")
     task_number     = models.IntegerField(blank = False, null = True, verbose_name = u"task_number")    
     server_status1  = models.IntegerField(blank = False, null = True, verbose_name = u"server_status1")
     server_status2  = models.IntegerField(blank = False, null = True, verbose_name = u"server_status2")
@@ -28,7 +30,7 @@ class mobile_ms_server(models.Model):
     check_time      = models.DateTimeField(auto_now_add=True, null = True, verbose_name = u"check_time")
   
     class Meta:
-        db_table    = "mobile_ms_server" 
+        db_table    = "mobile_ms" 
         
     def __unicode__(self):
         return "%s,%s,%s" % (str(self.server_id), str(self.server_name), str(self.server_ip))
@@ -48,6 +50,8 @@ class mobile_ms_server(models.Model):
         dic['identity_file'] = str(self.identity_file)
         dic['password'] = str(self.password)
         dic['is_valid'] = str(self.is_valid)
+        dic['is_dispatch'] = str(self.is_dispatch)
+        dic['is_pause']    = str(self.is_pause)
         dic['task_number'] = str(self.task_number)
         dic['server_status1'] = str(self.server_status1)
         dic['server_status2'] = str(self.server_status2)
@@ -59,7 +63,7 @@ class mobile_ms_server(models.Model):
         return dic
   
             
-class pc_ms_server(models.Model):
+class pc_ms(models.Model):
     # config
     server_id       = models.IntegerField(blank = False, primary_key=True, verbose_name = u"server_id")
     server_name     = models.CharField(max_length=32, verbose_name = u"server_name")   
@@ -75,6 +79,8 @@ class pc_ms_server(models.Model):
     password        = models.CharField(null = True, max_length=32, verbose_name = u"password")    
     # status 
     is_valid        = models.IntegerField(blank = False, null = True, verbose_name = u"is_valid") 
+    is_dispatch     = models.IntegerField(blank = False, null = True, verbose_name = u"is_dispatch") 
+    is_pause        = models.IntegerField(blank = False, null = True, verbose_name = u"is_pause")
     task_number     = models.IntegerField(blank = False, null = True, verbose_name = u"task_number")    
     server_status1  = models.IntegerField(blank = False, null = True, verbose_name = u"server_status1")
     server_status2  = models.IntegerField(blank = False, null = True, verbose_name = u"server_status2")
@@ -85,7 +91,7 @@ class pc_ms_server(models.Model):
     check_time      = models.DateTimeField(auto_now_add=True, null = True, verbose_name = u"check_time")
     
     class Meta:
-        db_table    = "pc_ms_server" 
+        db_table    = "pc_ms" 
         
     def __unicode__(self):
         return "%s,%s,%s" % (str(self.server_id), str(self.server_name), str(self.server_ip))
@@ -105,6 +111,8 @@ class pc_ms_server(models.Model):
         dic['identity_file'] = str(self.identity_file)
         dic['password'] = str(self.password)
         dic['is_valid'] = str(self.is_valid)
+        dic['is_dispatch'] = str(self.is_dispatch)
+        dic['is_pause']    = str(self.is_pause)
         dic['task_number'] = str(self.task_number)
         dic['server_status1'] = str(self.server_status1)
         dic['server_status2'] = str(self.server_status2)

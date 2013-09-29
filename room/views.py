@@ -7,9 +7,11 @@ import models
 import time
 import string
 #import MS.models
-from DB.db import *
-from MS.models import mobile_ms_server
-from MS.models import pc_ms_server
+import DB.db
+#from DB.db import *
+import MS.models
+#from MS.models import mobile_ms_server
+#from MS.models import pc_ms_server
 import operation.views
 #from operation.views import get_operation_record
 #from operation.views import get_operation_record_undone
@@ -17,7 +19,8 @@ import operation.views
 from task.views import get_tasks_local
 import threading
 from ms import *
-from MS.views import get_ms_status
+import MS.views
+#from MS.views import get_ms_status
                                            
 def room_insert(platform, v_room_id, v_room_name, v_is_valid, v_check_time):
     if(platform == 'mobile'): 
@@ -51,8 +54,8 @@ def get_room_macross(platform):
     #reload(sys)
     #sys.setdefaultencoding('utf8')
     
-    db = DB_MYSQL()
-    db.connect(DB_CONFIG.host, DB_CONFIG.port, DB_CONFIG.user, DB_CONFIG.password, DB_CONFIG.db)
+    db = DB.db.DB_MYSQL()
+    db.connect(DB.db.DB_CONFIG.host, DB.db.DB_CONFIG.port, DB.db.DB_CONFIG.user, DB.db.DB_CONFIG.password, DB.db.DB_CONFIG.db)
     if(platform == "mobile"):
         sql = "select l.room_id, l.room_name, l.is_valid from fs_server s, fs_mobile_location l where s.ml_room_id=l.room_id and s.is_valid=1 and l.is_valid=1 group by l.room_id order by l.room_id"
     elif(platform == "pc"):
@@ -122,9 +125,9 @@ def get_room_list(request, platform):
 def get_ms_list_in_room(platform, the_room_id):
     ms_list = []
     if(platform == 'mobile'):
-        ms_list = mobile_ms_server.objects.filter(room_id=the_room_id)
+        ms_list = MS.models.mobile_ms.objects.filter(room_id=the_room_id)
     elif(platform == 'pc'):
-        ms_list = pc_ms_server.objects.filter(room_id=the_room_id)
+        ms_list = MS.models.pc_ms.objects.filter(room_id=the_room_id)
     return ms_list
         
     
@@ -195,11 +198,15 @@ def do_add_hot_tasks(platform, record):
         print 'hot task: %d %s' % (task.hot, task.hash)
         one_ms = ms_all.find_task(task.hash)
         if(one_ms == None):
-            print '%s dispatched' % (task.hash)
-            log_file.write('%s dispatched to %s\n' % (task.hash, str(ms_all.get_cur_ms().db_record.controll_ip)))
+            print '%s dispatched' % (task.hash)            
             result = ms_all.dispatch_hot_task(task.hash)
-            if(result == False):
+            if(result == None):
+                print '%s can not dispatched\n' % (task.hash) 
+                log_file.write('%s can not dispatched\n' % (task.hash))
                 break
+            else:
+                print '%s dispatched to %s\n' % (task.hash, str(result.db_record.controll_ip))
+                log_file.write('%s dispatched to %s\n' % (task.hash, str(result.db_record.controll_ip)))
             num += 1
             if(num >= total_num):
                 break
@@ -226,18 +233,113 @@ def do_add_hot_tasks(platform, record):
     return True
 
 
+def do_sync_room_db(platform, record):
+    now_time = time.localtime(time.time())        
+    begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+    record.begin_time = begin_time
+    record.status = 1
+    record.save()
+    
+    room_list_macross = get_room_macross(platform)    
+    room_list_local = get_room_local(platform)
 
-class Thread_SYNC_MS_DB(threading.Thread):
+    num_macross = room_list_macross.__len__()
+    num_local = room_list_local.count()
+    
+    num_insert = 0
+    num_update = 0
+    num_delete = 0    
+
+    for room_local in room_list_local:
+        room_local.is_valid = 0
+    
+    for room_macross in room_list_macross:
+        room_local = room_list_find(room_list_local, room_macross['room_id'])
+        print room_macross['room_id'], room_macross['room_name'], room_macross['is_valid']
+        if(room_local == None):
+            room_insert(platform, room_macross['room_id'], room_macross['room_name'], room_macross['is_valid'], begin_time)                
+            num_insert += 1
+        else:
+            room_local.room_id           = room_macross['room_id']
+            room_local.room_name         = room_macross['room_name']
+            room_local.is_valid          = room_macross['is_valid']
+            room_local.check_time        = begin_time
+            room_local.save()
+            num_update += 1
+            
+    for room_local in room_list_local:
+        if(room_local.is_valid == 0):
+            room_local.delete()
+            num_delete += 1  
+    
+    now_time = time.localtime(time.time())        
+    end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+    record.end_time = end_time
+    record.status = 2        
+    output = 'now: %s, ' % (end_time)
+    output += 'macross: %d, ' % (num_macross)
+    output += 'local: %d, ' % (num_local)
+    output += 'insert: %d, ' % (num_insert)
+    output += 'num_update: %d, ' % (num_update)
+    output += 'num_delete: %d' % (num_delete)
+    record.memo = output
+    record.save()
+     
+    
+def do_sync_room_status(platform, record):
+    now_time = time.localtime(time.time())        
+    begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+    record.begin_time = begin_time
+    record.status = 1
+    record.save()
+
+    ms_num = 0
+    
+    rooms = get_room_local(platform)
+    for room in rooms:
+        print 'room_id=%d, %s' % (room.room_id, str(room.room_name))
+        ms_list = get_ms_list_in_room(platform, room.room_id)
+        room.ms_number = len(ms_list)
+        room.task_number = 0
+        room.total_disk_space = 0
+        room.free_disk_space = 0
+        room.suggest_task_number = 0
+        room.num_dispatching = 0
+        room.num_deleting = 0
+        for ms in ms_list:
+            ms_num += 1
+            #print 'ms_ip=%s' % (str(ms.controll_ip))                
+            room.task_number += ms.task_number
+            room.total_disk_space += ms.total_disk_space
+            room.free_disk_space  += ms.free_disk_space
+        room.save()
+                
+    now_time = time.localtime(time.time())        
+    end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+    output = 'now: %s, ' % (end_time)
+    output += 'room num: %s, ' % (len(rooms))
+    output += 'ms num: %d, ' % (ms_num)
+    print output
+    record.end_time = end_time
+    record.status = 2        
+    record.memo = output
+    record.save()
+        
+    
+class Thread_SYNC_ROOM_DB(threading.Thread):
     #platform = ''
     #record = None
     
     def __init__(self, the_platform, the_record):
-        super(Thread_SYNC_MS_DB, self).__init__()        
+        super(Thread_SYNC_ROOM_DB, self).__init__()        
         self.platform = the_platform
         self.record = the_record
         
         
     def run(self):
+        result = do_sync_room_db(self.platform, self.record)
+        return result
+    
         now_time = time.localtime(time.time())        
         begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
         self.record.begin_time = begin_time
@@ -303,78 +405,6 @@ class Thread_ADD_HOT_TASKS(threading.Thread):
     def run(self):
         result = do_add_hot_tasks(self.platform, self.record)
         return result
-        
-        now_time = time.localtime(time.time())        
-        begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
-        self.record.begin_time = begin_time
-        self.record.status = 1
-        self.record.save()
-    
-        room_id = self.record.name
-        num_dispatching = self.record.memo
-        total_num = string.atoi(num_dispatching)
-        
-        ms_list = get_ms_list_in_room(self.platform, room_id)
-        if(len(ms_list) <= 0):
-            now_time = time.localtime(time.time())        
-            end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
-            output = 'now: %s, ' % (end_time)
-            output += 'room_id: %s, ' % (room_id)
-            output += 'num_dispatching: %s, ' % (num_dispatching)
-            output += 'ms num: %d, ' % (len(ms_list))
-            self.record.end_time = end_time
-            self.record.status = 2        
-            self.record.memo = output
-            self.record.save()
-            return False
-        
-        print 'ms_list num: %d' % (len(ms_list))
-        
-        file_name = 'hot_tasks_%s_%s.log' % (room_id, num_dispatching)
-        log_file = open(file_name, 'w')        
-        
-        ms_all = MS_ALL(self.platform, ms_list)
-        ms_all.get_tasks()
-            
-        num = 0
-        result = False
-        tasks = get_tasks_local(self.platform) 
-        print 'tasks count: %d' % (tasks.count())
-        #hot_tasks = tasks.order_by('-hot')
-        hot_tasks = tasks.filter(hot__gt=0).order_by('-hot')
-        print 'hot_tasks count: %d' % (hot_tasks.count())
-        for task in hot_tasks:
-            print 'hot task: %d %s' % (task.hot, task.hash)
-            one_ms = ms_all.find_task(task.hash)
-            if(one_ms == None):
-                print '%s dispatched' % (task.hash)
-                log_file.write('%s dispatched to %s\n' % (task.hash, str(ms_all.get_cur_ms().db_record.controll_ip)))
-                result = ms_all.dispatch_hot_task(task.hash)
-                if(result == False):
-                    break
-                num += 1
-                if(num >= total_num):
-                    break
-            else:
-                print '%s exist at %s' % (task.hash, one_ms.db_record.controll_ip)
-                log_file.write('%s exist at %s\n' % (task.hash, one_ms.db_record.controll_ip))
-    
-        log_file.close()
-        
-        ms_all.do_dispatch()
-        
-        now_time = time.localtime(time.time())        
-        end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
-        output = 'now: %s, ' % (end_time)
-        output += 'room_id: %s, ' % (room_id)
-        output += 'num_dispatching: %s, ' % (num_dispatching)
-        output += 'ms num: %d, ' % (len(ms_list))
-        output += 'task num: %d, ' % (num)
-        print output
-        self.record.end_time = end_time
-        self.record.status = 2        
-        self.record.memo = output
-        self.record.save()
        
 
 
@@ -471,6 +501,9 @@ class Thread_SYNC_ROOM_STATUS(threading.Thread):
         
         
     def run(self):
+        result = do_sync_room_status(self.platform, self.record)
+        return result
+    
         now_time = time.localtime(time.time())        
         begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
         self.record.begin_time = begin_time
@@ -486,7 +519,7 @@ class Thread_SYNC_ROOM_STATUS(threading.Thread):
             ms_list = get_ms_list_in_room(self.platform, room_id)
             for ms in ms_list:
                 print 'ms_ip=%s' % (str(ms.controll_ip))                
-                get_ms_status(ms)
+                MS.views.get_ms_status(ms)
                 ms_num += 1
                     
         now_time = time.localtime(time.time())        
@@ -524,7 +557,7 @@ def sync_room_db(request, platform):
         if(record != None):
             output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
             # start thread.
-            t = Thread_SYNC_MS_DB(platform, record)            
+            t = Thread_SYNC_ROOM_DB(platform, record)            
             t.start()
     else:
         for record in records:
@@ -608,8 +641,8 @@ def delete_cold_tasks(request, platform):
 
 def sync_room_status(request, platform):  
     print 'sync_room_status'    
-    ids = request.REQUEST['ids']
-    print ids
+    #ids = request.REQUEST['ids']
+    #print ids
     
     now_time = time.localtime(time.time())
     today = time.strftime("%Y-%m-%d", now_time)
@@ -620,7 +653,8 @@ def sync_room_status(request, platform):
     operation1['name'] = today
     operation1['user'] = request.user.username
     operation1['dispatch_time'] = dispatch_time
-    operation1['memo'] = ids
+    #operation1['memo'] = ids
+    operation1['memo'] = ''
         
     output = ''
     records = operation.views.get_operation_record_undone(platform, operation1['type'], operation1['name'])
