@@ -189,7 +189,8 @@ def get_tasks_macross(platform, begin_date, end_date):
     if(platform == 'mobile'):
         #sql = "select dat_hash, create_time, filesize from fs_mobile_dat where state!='dismissed' " + where_condition
         sql = "select dat_hash, create_time from fs_mobile_dat where state!='dismissed' " + where_condition
-    elif(platform == 'pc'):
+    elif(platform == 'pc'):        
+        #sql = "select t.task_hash, t.create_time, d.file_size from fs_task t, fs_dat_file d where t.task_hash=d.hashid and t.state!='dismissed' " + where_condition
         sql = "select task_hash, create_time from fs_task where state!='dismissed' " + where_condition   
     print sql
     db.execute(sql)
@@ -202,6 +203,8 @@ def get_tasks_macross(platform, begin_date, end_date):
                 ms['hash'] = r
             elif(col_num == 1):
                 ms['online_time'] = r
+            elif(col_num == 2):
+                ms['filesize'] = r
             col_num += 1
         ms_list.append(ms)
     
