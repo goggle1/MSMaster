@@ -73,6 +73,9 @@ def get_task_list(request, platform):
             
     start = request.REQUEST['start']
     limit = request.REQUEST['limit']
+    hash_id = ''
+    if(request.REQUEST.has_key('hash') == True):
+        hash_id = request.REQUEST['hash']
     start_index = string.atoi(start)
     limit_num = string.atoi(limit)
     print '%d,%d' % (start_index, limit_num)
@@ -95,24 +98,28 @@ def get_task_list(request, platform):
     if(len(sort) > 0):
         order_condition += sort
        
-    tasks2 = [] 
+    tasks2 = None
+    tasks1 = None
     tasks = get_tasks_local(platform)
+    tasks1 = tasks
+    if(hash_id != ''):
+        tasks1 = tasks.filter(hash=hash_id)
         
     #now_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.localtime(time.time()))
     #print now_time
     if(len(order_condition) > 0):        
         #tasks2 = models.mobile_task.objects.order_by(order_condition)[start_index:limit_num]
-        tasks2 = tasks.order_by(order_condition)[start_index:start_index+limit_num]     
+        tasks2 = tasks1.order_by(order_condition)[start_index:start_index+limit_num]     
     else:
         #tasks2 = models.mobile_task.objects.all()[start_index:limit_num]
-        tasks2 = tasks[start_index:start_index+limit_num]
+        tasks2 = tasks1[start_index:start_index+limit_num]
     #now_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.localtime(time.time()))
     #print now_time
         
     return_datas = {'success':True, 'data':[]}
     #now_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.localtime(time.time()))
     #print now_time
-    return_datas['total_count'] = tasks.count()
+    return_datas['total_count'] = tasks1.count()
     print tasks.count()
     #now_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.localtime(time.time()))
     #print now_time
@@ -172,7 +179,7 @@ def get_tasks_macross(platform, begin_date, end_date):
     where_condition = ''
     if(len(begin_date) > 0):
         begin_time = '%s-%s-%s 00:00:00' % (begin_date[0:4], begin_date[4:6], begin_date[6:8])
-        where_condition += " where create_time >= '%s'" % (begin_time)
+        where_condition += " and create_time >= '%s'" % (begin_time)
     if(len(end_date) > 0):
         end_time = '%s-%s-%s 00:00:00' % (end_date[0:4], end_date[4:6], end_date[6:8])
         where_condition += " and create_time < '%s'" % (end_time)
@@ -180,9 +187,10 @@ def get_tasks_macross(platform, begin_date, end_date):
     db = DB.db.DB_MYSQL()
     db.connect(DB.db.DB_CONFIG.host, DB.db.DB_CONFIG.port, DB.db.DB_CONFIG.user, DB.db.DB_CONFIG.password, DB.db.DB_CONFIG.db)
     if(platform == 'mobile'):
-        sql = "select dat_hash, create_time from fs_mobile_dat" + where_condition
+        #sql = "select dat_hash, create_time, filesize from fs_mobile_dat where state!='dismissed' " + where_condition
+        sql = "select dat_hash, create_time from fs_mobile_dat where state!='dismissed' " + where_condition
     elif(platform == 'pc'):
-        sql = "select task_hash, create_time from fs_task" + where_condition   
+        sql = "select task_hash, create_time from fs_task where state!='dismissed' " + where_condition   
     print sql
     db.execute(sql)
     
@@ -195,7 +203,7 @@ def get_tasks_macross(platform, begin_date, end_date):
             elif(col_num == 1):
                 ms['online_time'] = r
             col_num += 1
-        ms_list.append(ms)    
+        ms_list.append(ms)
     
     db.close()  
      
@@ -271,9 +279,9 @@ def upload_sub_hits_num(platform, previous_day):
         
     upload_file = ""
     if(platform == 'mobile'):
-        upload_file = HITS_FILE.template_mobile % (previous_day)
+        upload_file = DB.db.HITS_FILE.template_mobile % (previous_day)
     elif(platform == 'pc'):
-        upload_file = HITS_FILE.template_pc % (previous_day)
+        upload_file = DB.db.HITS_FILE.template_pc % (previous_day)
     print 'sub_hits_num %s' % (upload_file)
        
     line_num = 0
@@ -318,12 +326,12 @@ def upload_add_hits_num(platform, hits_date):
     
     upload_file = ""
     if(platform == 'mobile'):        
-        upload_file = HITS_FILE.template_mobile % (hits_date)
+        upload_file = DB.db.HITS_FILE.template_mobile % (hits_date)
     elif(platform == 'pc'):
-        upload_file = HITS_FILE.template_mobile % (hits_date)
+        upload_file = DB.db.HITS_FILE.template_mobile % (hits_date)
     print 'add_hits_num %s' % (upload_file)
        
-    hits_time = '%s-%s-%sT12:00:00+00:00' % (hits_date[0:4], hits_date[4:6], hits_date[6:8])  
+    hits_time = '%s-%s-%s 12:00:00+00:00' % (hits_date[0:4], hits_date[4:6], hits_date[6:8])  
     
     try:
         hits_file = open(upload_file, "r")
@@ -407,7 +415,9 @@ def do_cold(platform, record):
         task.cold1 = day_diff(str(last_hit_time), hits_time)
         print '%d: %s cold1: %f' % (num_calc, task.hash, task.cold1)
         task.save()
-        num_calc += 1            
+        num_calc += 1 
+        #if(num_calc >= 55):
+        #    break           
         
     now_time = time.localtime(time.time())        
     end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
@@ -446,7 +456,7 @@ def do_upload(platform, record):
                  
     #last = datetime.date(datetime.date.today().year,datetime.date.today().month,1)-datetime.timedelta(1)
     #print last
-    day_delta = HITS_FILE.hot_period
+    day_delta = DB.db.HITS_FILE.hot_period
     num_year = string.atoi(hits_date[0:4])
     num_mon = string.atoi(hits_date[4:6])
     num_day = string.atoi(hits_date[6:8])
@@ -481,7 +491,7 @@ def do_upload(platform, record):
     record.save()
         
         
-def do_sync(platform, record):    
+def do_sync_all(platform, record):    
     now_time = time.localtime(time.time())        
     begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
     print 'begin@%s' % (begin_time)
@@ -491,17 +501,7 @@ def do_sync(platform, record):
     
     begin_date = ''
     end_date = ''
-    
-    date_range = record.memo
-    if(len(date_range) > 0):
-        parts = date_range.split('&')
-        date1 = parts[0]
-        date2 = parts[1]   
-        sub_parts = date1.split('=')
-        begin_date = sub_parts[1]        
-        sub_parts = date2.split('=')
-        end_date = sub_parts[1]
-    
+        
     hash_list_macross = get_tasks_macross(platform, begin_date, end_date)
     num_macross = hash_list_macross.__len__()
     print 'num_macross=%d' % (num_macross)
@@ -514,31 +514,44 @@ def do_sync(platform, record):
     num_update = 0
     num_delete = 0
     
-    #for hash_local in hash_list_local:
-    #    hash_local.is_valid = 0
+    #if(len(date_range) <= 0):
+    #    for hash_local in hash_list_local:
+    #        hash_local.is_valid = 0
     
     for hash_macross in hash_list_macross:        
         create_time = '%s+00:00' % (hash_macross['online_time'])
         print '%s, %s' % (hash_macross['hash'], create_time)
         #hash_local = task_list_find(hash_list_local, hash_macross['hash'])
         hash_list = hash_list_local.filter(hash=hash_macross['hash'])
+        #print 'insert before %d' % (len(hash_list)) 
         if(len(hash_list) <= 0):
             print 'insert'
-            task_insert(platform, hash_macross['hash'], create_time, 1, 0, 0.0, 0.0, 0.0, create_time, 0)                
-            num_insert += 1
-        else:                
-            if(str(hash_list[0].online_time) != create_time):
-                print 'update, online_time %s != %s' % (str(hash_list[0].online_time), create_time)
-                hash_list[0].online_time = create_time
-                hash_list[0].save()   
-            else:
-                print 'update, do nothing'         
+            task_insert(platform, hash_macross['hash'], create_time, 2, 0, 0.0, 0.0, 0.0, create_time, 0)   
+            #hash_list2 = hash_list_local.filter(hash=hash_macross['hash'])
+            #print 'insert after %d' % (len(hash_list2))            
+            num_insert += 1    
+        else:      
+            print 'update'          
+            #if(str(hash_list[0].online_time) != create_time):
+            #    print 'update, online_time %s != %s' % (str(hash_list[0].online_time), create_time)
+            #    hash_list[0].online_time = create_time
+            #    hash_list[0].save()   
+            #else:
+            #    print 'update, do nothing'  
+            hash_list[0].online_time = create_time
+            hash_list[0].is_valid = 2
+            hash_list[0].save()       
             num_update += 1
-                
+               
     #for hash_local in hash_list_local:
     #    if(hash_local.is_valid == 0):
     #        hash_local.delete()
-    #        num_delete += 1  
+    #        num_delete += 1 
+    hash_list_delete = hash_list_local.filter(is_valid=1)
+    num_delete = hash_list_delete.count()
+    hash_list_delete.delete()  
+    
+    get_tasks_local(platform).update(is_valid=1)
     
     now_time = time.localtime(time.time())        
     end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
@@ -554,6 +567,76 @@ def do_sync(platform, record):
     record.memo = output
     record.save()
     return True
+    
+            
+def do_sync_partial(platform, record):    
+    now_time = time.localtime(time.time())        
+    begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+    print 'begin@%s' % (begin_time)
+    record.begin_time = begin_time
+    record.status = 1
+    record.save()
+    
+    begin_date = ''
+    end_date = ''
+    
+    date_range = record.memo
+    if(len(date_range) > 0):
+        parts = date_range.split('~')
+        begin_date = parts[0] 
+        end_date = parts[1]
+    
+    hash_list_macross = get_tasks_macross(platform, begin_date, end_date)
+    num_macross = hash_list_macross.__len__()
+    print 'num_macross=%d' % (num_macross)
+    
+    hash_list_local = get_tasks_local(platform)
+    num_local = hash_list_local.count()
+    print 'num_local=%d' % (num_local)
+    
+    num_insert = 0
+    num_update = 0
+    num_delete = 0
+    
+    for hash_macross in hash_list_macross:        
+        create_time = '%s+00:00' % (hash_macross['online_time'])
+        print '%s, %s' % (hash_macross['hash'], create_time)
+        #hash_local = task_list_find(hash_list_local, hash_macross['hash'])
+        hash_list = hash_list_local.filter(hash=hash_macross['hash'])
+        #print 'insert before %d' % (len(hash_list)) 
+        if(len(hash_list) <= 0):
+            print 'insert'
+            task_insert(platform, hash_macross['hash'], create_time, 1, 0, 0.0, 0.0, 0.0, create_time, 0)   
+            #hash_list2 = hash_list_local.filter(hash=hash_macross['hash'])
+            #print 'insert after %d' % (len(hash_list2))            
+            num_insert += 1    
+        else:      
+            print 'update'          
+            #if(str(hash_list[0].online_time) != create_time):
+            #    print 'update, online_time %s != %s' % (str(hash_list[0].online_time), create_time)
+            #    hash_list[0].online_time = create_time
+            #    hash_list[0].save()   
+            #else:
+            #    print 'update, do nothing'  
+            hash_list[0].online_time = create_time
+            hash_list[0].is_valid = 1
+            hash_list[0].save()       
+            num_update += 1
+    
+    now_time = time.localtime(time.time())        
+    end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+    output = 'now: %s, ' % (end_time)
+    output += 'macross: %d, ' % (num_macross)
+    output += 'local: %d, ' % (num_local)
+    output += 'insert: %d, ' % (num_insert)
+    output += 'num_update: %d, ' % (num_update)
+    output += 'num_delete: %d' % (num_delete)
+    print output
+    record.end_time = end_time
+    record.status = 2
+    record.memo = output
+    record.save()
+    return True    
 
     
 class Thread_UPLOAD(threading.Thread):
@@ -603,14 +686,23 @@ class Thread_COLD(threading.Thread):
 class Thread_SYNC(threading.Thread):
     #platform = ''
     #record = None
+    #sync_all = 0
     
     def __init__(self, the_platform, the_record):
         super(Thread_SYNC, self).__init__()        
         self.platform = the_platform
-        self.record = the_record        
+        self.record = the_record    
+        if(self.record.memo == '~'):
+            self.sync_all = 1
+        else:
+            self.sync_all = 0
         
     def run(self):
-        result = do_sync(self.platform, self.record)
+        result = False
+        if(self.sync_all == 1):
+            result = do_sync_all(self.platform, self.record)
+        else:
+            result = do_sync_partial(self.platform, self.record)
         return result        
         
 
@@ -645,7 +737,7 @@ def sync_hash_db(request, platform):
     operation['name'] = today
     operation['user'] = request.user.username
     operation['dispatch_time'] = dispatch_time
-    operation['memo'] = ('begin_date=%s&end_date=%s' % (request.REQUEST['begin_date'], request.REQUEST['end_date']))
+    operation['memo'] = '%s~%s' % (request.REQUEST['begin_date'], request.REQUEST['end_date'])
     
     return_datas = {}
     

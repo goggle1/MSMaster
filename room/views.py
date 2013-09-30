@@ -16,7 +16,8 @@ import operation.views
 #from operation.views import get_operation_record
 #from operation.views import get_operation_record_undone
 #from operation.views import create_operation_record
-from task.views import get_tasks_local
+#from task.views import get_tasks_local
+import task.views
 import threading
 from ms import *
 import MS.views
@@ -219,7 +220,7 @@ def do_add_hot_tasks(platform, record):
             
     num = 0
     result = False
-    tasks = get_tasks_local(platform) 
+    tasks = task.views.get_tasks_local(platform) 
     print 'tasks count: %d' % (tasks.count())
     #hot_tasks = tasks.order_by('-hot')
     hot_tasks = tasks.filter(hot__gt=0).order_by('-hot')
@@ -328,7 +329,7 @@ def do_delete_cold_tasks(platform, record):
             
     num = 0
     result = False
-    tasks = get_tasks_local(platform) 
+    tasks = task.views.get_tasks_local(platform) 
     print 'tasks count: %d' % (tasks.count())
     cold_tasks = tasks.order_by('cold1')
     print 'cold_tasks count: %d' % (cold_tasks.count())

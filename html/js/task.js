@@ -90,6 +90,7 @@ var taskJS = function(){
 				{name: 'hash', type: 'string'},
 				'online_time',
 				'is_valid',
+				'filesize',
 				'hot',
 				'cold1',
 				'cold2',
@@ -106,6 +107,7 @@ var taskJS = function(){
 			{header : 'hash', id : 'hash', dataIndex : 'hash', sortable : true},
 			{header : 'online_time', id : 'online_time', dataIndex : 'online_time', sortable : true},
 			{header : 'is_valid', id : 'hot', dataIndex : 'hot', sortable : true, hidden: true},
+			{header : 'filesize', id : 'filesize', dataIndex : 'filesize', sortable : true},
 			{header : 'hot', id : 'hot', dataIndex : 'hot', sortable : true},
 			{header : 'cold1', id : 'cold1', dataIndex : 'cold1', sortable : true},
 			{header : 'cold2', id : 'cold2', dataIndex : 'cold2', sortable : true},
@@ -178,6 +180,8 @@ var taskJS = function(){
 				iconCls: 'detail',
 				handler: self.show_task_detail
 			}],
+			//listeners:{'render':createTbar,'afteredit':self.saveTaskInfo,'celldblclick':Taskinfo.dbclickShowTaskDetail},
+			listeners:{'render':createTbar},
 			bbar: task_page
 		});
 	
@@ -185,6 +189,101 @@ var taskJS = function(){
 		
 		main_panel.add(self.task_grid);
 		main_panel.setActiveTab(self.task_grid);
+		
+		//生成顶部工具条
+		function createTbar(){
+			var listener = {specialkey:function(field, e){if(e.getKey()==Ext.EventObject.ENTER){query_task();}}};
+			var oneTbar = new Ext.Toolbar({
+				items:['hash: ',{
+						xtype:'textfield',
+						id:'hash',
+						name:'hash',
+						width:320
+					},"-",{
+						text:'搜索',
+						iconCls: 'search',
+						handler: query_task
+					},"-",{
+						text:'重置',
+						iconCls: 'reset',
+						handler: reset_query_task
+					}]
+			});
+			oneTbar.render(self.task_grid.tbar);
+		}
+		
+		
+		function query_task(){			
+			self.task_store.on('beforeload', function(obj) {
+				Ext.apply(obj.baseParams,{
+						'start':0,
+						'limit':task_page.pageSize,
+						'hash':Ext.getCmp('hash').getValue()
+						});
+			});			
+			self.task_store.load();
+		};
+		
+		function reset_query_task(){
+			//将查询条件置为空，不可以将查询条件的充值放到beforeload里			
+			Ext.getCmp('hash').setValue("");
+			query_task();
+		};
+		
+		//右键触发事件
+		function rightClickRowMenu(grid,rowIndex,cellIndex,e){
+			e.preventDefault();  		//禁用浏览器默认的右键 ，针对某一行禁用
+			if(rowIndex<0)return true;
+			var record = grid.getStore().getAt(rowIndex);   //获取当前行的记录
+	  		var cur_hash_id = record.get('hash');			//取得当前右键所在行的任务HASH_ID
+			var t_sm = grid.getSelectionModel();
+			//此处为多选行，如果没有选择任意一行时，需要对右键当前行进行选中设置,如果当前右键所在行不在选择的行中，则移除所有选择的行，选择当前行，
+			var hash_id_arr = [];
+			if(t_sm.getSelected()){
+				var recs=t_sm.getSelections(); // 把所有选中项放入数组
+				for(var i=0;i<recs.length;i++){
+					hash_id_arr.push(recs[i].get("hash"));
+				}
+			}
+			var param_id = "";
+			if(hash_id_arr.indexOf(cur_hash_id) < 0){
+				//如果当前右键所在行不在选择的行中，则移除所有选择的行，选择当前行，
+				//没有选择任意一行时,使用右键时，需要设置选中当前行
+				t_sm.clearSelections();
+				t_sm.selectRow(rowIndex);			//选中某一行
+				grid.getView().focusRow(rowIndex);			//获取焦点
+				param_id = cur_hash_id;
+			}else{
+				param_id = hash_id_arr.join(',');
+			}
+	  		//如果存在右键菜单，则需要清除右键里的所有菜单项item
+ 			if(Ext.get('task_right_menu')){
+ 				Ext.getCmp('task_right_menu').removeAll();
+ 			}
+ 			 			
+			//动态生成右键
+			var menu_items = [];
+			var auth_detail = {text:'任务详情',iconCls:'detail',handler:self.show_task_detail};
+			//var auth_modify = {text:'修改任务信息',iconCls:'modify',handler:self.modifyTaskInfo};
+			var auth_refresh = {text:'刷新任务状态',iconCls:'refresh',handler:self.refresh_task_list};
+			menu_items.push(auth_detail);
+			//menu_items.push(auth_modify);
+			menu_items.push(auth_refresh);
+			var rightMenu = new Ext.menu.Menu({
+							id:'task_right_menu',
+							items: menu_items
+						});
+			//定位。显示右键菜单
+			if(e.getXY()[0]==0||e.getXY()[1]==0)
+				rightMenu.show(grid.getView().getCell(rowIndex,cellIndex));
+			else
+				rightMenu.showAt(e.getXY());
+		}
+		// 给控件添加右键菜单触发事件(rowcontextmenu)
+		self.task_grid.addListener('cellcontextmenu', rightClickRowMenu);
+		self.task_grid.addListener('contextmenu', function(e){e.preventDefault(); }); 		//禁用浏览器默认的右键 ,针对grid禁用
+		
+		
 	};
 
 	/**
@@ -633,6 +732,70 @@ var taskJS = function(){
 
 	};
 	
+	this.saveTaskInfo = function(e){
+		/*
+		var record = e.record; //得到当前行所有数据，用法record.data.task_id或record.get('task_id')
+		var field = e.field; //得到修改列
+		var value = e.value; //得到修改列修改后值
+		if (value == "") {
+			self.refreshTaskList();
+			return true;
+		}
+		var _url = '';
+		var _show_title = "名称";
+		//为了权限的控制，此处需要根据修改的字段属性来区分url
+		if(field == 'task_name'){
+			_url = '/task/index.php?c=task&a=modify_task_name';
+		}else if(field == 'state' || field == 'main_state'){
+			_show_title = (field == 'state')?"状态":"主状态";
+			_url = '/task/index.php?c=task&a=del_task_state';
+		}else{
+			self.refreshTaskList();
+			return true;
+		}
+		Ext.MessageBox.confirm("请确认","确定要修改任务"+_show_title+"？",function(button){
+			if(button != 'yes'){
+				self.refreshTaskList();
+				return true;
+			}
+			Base.request(
+				'ext_task',
+				_url,
+				'task_id='+record.get('task_id')+'&field='+field+'&value='+value,
+				function(result){
+					//Ext.MessageBox.show({title: '成功',msg: result.data,buttons: Ext.MessageBox.OK});
+					self.refreshTaskList();
+				},
+				function(result){
+					Ext.MessageBox.show({title: '警告',msg: result.data,buttons: Ext.MessageBox.OK,icon: Ext.MessageBox.WARNING});
+					self.refreshTaskList();
+				}
+			);
+		});
+		*/
+	};
+	
 };
 
 Task = new taskJS();
+
+var taskinfoJS = function(){
+	var self = this;
+
+ 	this.dbclickShowTaskDetail = function(grid,rowIndex,columnIndex,e){
+ 		/*
+ 		var record = grid.getStore().getAt(rowIndex);
+ 		var fieldName = grid.getColumnModel().getDataIndex(columnIndex);
+ 		if(fieldName == "task_id"){
+ 			var task_id = record.get("task_id");
+ 			var task_name = record.get("task_name");
+ 			self.showTaskDetailEnd(task_id,task_name);
+ 		}
+ 		*/
+ 	};
+	
+
+	
+};
+
+Taskinfo = new taskinfoJS();

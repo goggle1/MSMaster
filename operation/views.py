@@ -158,7 +158,10 @@ class Thread_JOBS(threading.Thread):
         if(operation.status == models.STATUS_DONE):
             return True
         if(operation.type == 'sync_hash_db'):
-            result = task.views.do_sync(self.platform, operation)
+            if(operation.memo == '~'):
+                result = task.views.do_sync_all(self.platform, operation)
+            else:
+                result = task.views.do_sync_partial(self.platform, operation)
         elif(operation.type == 'upload_hits_num'):
             result = task.views.do_upload(self.platform, operation)
         elif(operation.type == 'calc_cold'):
