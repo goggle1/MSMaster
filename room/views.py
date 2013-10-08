@@ -331,22 +331,23 @@ def do_delete_cold_tasks(platform, record):
     result = False
     tasks = task.views.get_tasks_local(platform) 
     print 'tasks count: %d' % (tasks.count())
-    cold_tasks = tasks.order_by('cold1')
+    cold_tasks = tasks.filter(cold1__lt=-60.0).order_by('cold1', 'hot')
+    #cold_tasks = tasks.order_by('cold1', 'hot')
     print 'cold_tasks count: %d' % (cold_tasks.count())
-    for task in cold_tasks:
-        one_ms = ms_all.find_task(task.hash)
+    for task1 in cold_tasks:
+        one_ms = ms_all.find_task(task1.hash)
         if(one_ms != None):
-            #print '%s delete' % (task.hash)
-            log_file.write('[%f]%s delete from %s\n' % (task.cold1, task.hash, one_ms.db_record.controll_ip))
-            result = ms_all.delete_cold_task(one_ms, task.hash)
+            #print '%s delete' % (task1.hash)
+            log_file.write('[%f]%s delete from %s\n' % (task1.cold1, task1.hash, one_ms.db_record.controll_ip))
+            result = ms_all.delete_cold_task(one_ms, task1.hash)
             if(result == False):
                 break
             num += 1
             if(num >= total_delete_num):
                 break
         else:
-            #print '%s non_exist' % (task.hash)
-            log_file.write('[%f]%s non_exist\n' % (task.cold1, task.hash))
+            #print '%s non_exist' % (task1.hash)
+            log_file.write('[%f]%s non_exist\n' % (task1.cold1, task1.hash))
 
     log_file.close()
     
@@ -526,6 +527,11 @@ def sync_room_db(request, platform):
     print 'sync_room_db'
     print request.REQUEST
     
+    start_now = False
+    if 'start_now' in request.REQUEST:
+        if(request.REQUEST['start_now'] == 'on'):
+            start_now = True
+    
     now_time = time.localtime(time.time())
     today = time.strftime("%Y-%m-%d", now_time)
     dispatch_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
@@ -537,20 +543,33 @@ def sync_room_db(request, platform):
     operation1['dispatch_time'] = dispatch_time
     operation1['memo'] = ''
         
+    return_datas = {}
     output = ''
     records = operation.views.get_operation_undone_by_type(platform, operation1['type'])
-    if(len(records) == 0):
-        record = operation.views.create_operation_record_by_dict(platform, operation1)
-        if(record != None):
-            output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
-            # start thread.
-            t = Thread_SYNC_ROOM_DB(platform, record)            
-            t.start()
-    else:
+    if(len(records) > 0):          
         for record in records:
             output += 'operation exist, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
+        return_datas['success'] = False
+        return_datas['data'] = output
+        return HttpResponse(json.dumps(return_datas)) 
     
-    return HttpResponse(output)     
+    record = operation.views.create_operation_record_by_dict(platform, operation1)
+    if(record == None):
+        output += 'operation create failure'
+        return_datas['success'] = False
+        return_datas['data'] = output
+        return HttpResponse(json.dumps(return_datas)) 
+        
+    output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
+    return_datas['success'] = False
+    return_datas['data'] = output
+        
+    if(start_now == True):
+        # start thread.
+        t = Thread_SYNC_ROOM_DB(platform, record)            
+        t.start()
+    
+    return HttpResponse(json.dumps(return_datas))   
 
 
 
@@ -602,7 +621,8 @@ def add_hot_tasks(request, platform):
 
 
 def delete_cold_tasks(request, platform):
-    print 'delete_cold_tasks'    
+    print 'delete_cold_tasks'   
+    print request.REQUEST  
     
     v_room_id = request.REQUEST['room_id']
     v_suggest_task_number = request.REQUEST['suggest_task_number']
@@ -649,9 +669,15 @@ def delete_cold_tasks(request, platform):
 
 
 def sync_room_status(request, platform):  
-    print 'sync_room_status'    
+    print 'sync_room_status' 
+    print request.REQUEST   
     #ids = request.REQUEST['ids']
     #print ids
+    
+    start_now = False
+    if 'start_now' in request.REQUEST:
+        if(request.REQUEST['start_now'] == 'on'):
+            start_now = True
     
     now_time = time.localtime(time.time())
     today = time.strftime("%Y-%m-%d", now_time)
@@ -663,22 +689,35 @@ def sync_room_status(request, platform):
     operation1['user'] = request.user.username
     operation1['dispatch_time'] = dispatch_time
     #operation1['memo'] = ids
-    operation1['memo'] = ''
-        
+    operation1['memo'] = ''        
+    
+    return_datas = {}
     output = ''
-    records = operation.views.get_operation_record_undone(platform, operation1['type'], operation1['name'])
-    if(len(records) == 0):
-        record = operation.views.create_operation_record_by_dict(platform, operation1)
-        if(record != None):
-            output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
-            # start thread.
-            t = Thread_SYNC_ROOM_STATUS(platform, record)            
-            t.start()
-    else:
+    records = operation.views.get_operation_undone_by_type(platform, operation1['type'])
+    if(len(records) > 0):          
         for record in records:
             output += 'operation exist, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
+        return_datas['success'] = False
+        return_datas['data'] = output
+        return HttpResponse(json.dumps(return_datas)) 
     
-    return HttpResponse(output)    
+    record = operation.views.create_operation_record_by_dict(platform, operation1)
+    if(record == None):
+        output += 'operation create failure'
+        return_datas['success'] = False
+        return_datas['data'] = output
+        return HttpResponse(json.dumps(return_datas)) 
+        
+    output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
+    return_datas['success'] = False
+    return_datas['data'] = output
+        
+    if(start_now == True):
+        # start thread.
+        t = Thread_SYNC_ROOM_STATUS(platform, record)            
+        t.start()
+    
+    return HttpResponse(json.dumps(return_datas))    
 
 
     

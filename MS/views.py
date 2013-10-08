@@ -376,70 +376,7 @@ class Thread_SYNC_MS_DB(threading.Thread):
         
     def run(self):
         result = do_sync_ms_db(self.platform, self.record)
-        return result
-    
-        now_time = time.localtime(time.time())        
-        begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
-        self.record.begin_time = begin_time
-        self.record.status = 1
-        self.record.save()
-    
-        ms_list_macross = get_ms_macross(self.platform)    
-        ms_list_local = get_ms_local(self.platform)
-    
-        num_macross = ms_list_macross.__len__()
-        num_local = ms_list_local.count()
-    
-        num_insert = 0
-        num_update = 0
-        num_delete = 0
-    
-        for ms_local in ms_list_local:
-            ms_local.is_valid = 0
-    
-        for ms_macross in ms_list_macross:
-            ms_local = ms_list_find(ms_list_local, ms_macross['server_id'])
-            if(ms_local == None):
-                ms_insert(self.platform, ms_macross['server_id'], ms_macross['server_name'], ms_macross['server_ip'], ms_macross['server_port'], \
-                          ms_macross['controll_ip'], ms_macross['controll_port'], ms_macross['room_id'], ms_macross['room_name'], \
-                          ms_macross['server_version'], ms_macross['protocol_version'], ms_macross['is_valid'], ms_macross['is_dispatch'], ms_macross['is_pause'],  \
-                          0, 0, 0, 0, 0, 0, 0, begin_time)                
-                num_insert += 1
-            else:
-                ms_local.server_id          = ms_macross['server_id']
-                ms_local.server_name        = ms_macross['server_name']
-                ms_local.server_ip          = ms_macross['server_ip']
-                ms_local.server_port        = ms_macross['server_port']
-                ms_local.controll_ip        = ms_macross['controll_ip']
-                ms_local.controll_port      = ms_macross['controll_port']
-                ms_local.room_id            = ms_macross['room_id']
-                ms_local.room_name          = ms_macross['room_name']
-                ms_local.server_version     = ms_macross['server_version']
-                ms_local.protocol_version   = ms_macross['protocol_version']
-                ms_local.is_valid           = ms_macross['is_valid']
-                ms_local.is_dispatch        = ms_macross['is_dispatch']
-                ms_local.is_pause           = ms_macross['is_pause']
-                ms_local.check_time         = begin_time
-                ms_local.save()
-                num_update += 1
-                
-        for ms_local in ms_list_local:
-            if(ms_local.is_valid == 0):
-                ms_local.delete()
-                num_delete += 1  
-    
-        now_time = time.localtime(time.time())        
-        end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
-        self.record.end_time = end_time
-        self.record.status = 2        
-        output = 'now: %s, ' % (end_time)
-        output += 'macross: %d, ' % (num_macross)
-        output += 'local: %d, ' % (num_local)
-        output += 'insert: %d, ' % (num_insert)
-        output += 'num_update: %d, ' % (num_update)
-        output += 'num_delete: %d' % (num_delete)
-        self.record.memo = output
-        self.record.save()
+        return result        
         
             
 class Thread_SYNC_MS_STATUS(threading.Thread):
@@ -454,37 +391,17 @@ class Thread_SYNC_MS_STATUS(threading.Thread):
         
     def run(self):
         result = do_sync_ms_status(self.platform, self.record)
-        return result
-    
-        now_time = time.localtime(time.time())        
-        begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
-        self.record.begin_time = begin_time
-        self.record.status = 1
-        self.record.save()
-            
-        ms_list_local = get_ms_local(self.platform)
-        
-        num_local = ms_list_local.count()
-            
-        num_update = 0    
-    
-        for ms_local in ms_list_local:
-            get_ms_status(ms_local)        
-    
-        now_time = time.localtime(time.time())        
-        end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
-        self.record.end_time = end_time
-        self.record.status = 2        
-        output = 'now: %s, ' % (end_time)
-        output += 'local: %d, ' % (num_local)
-        output += 'num_update: %d, ' % (num_update)
-        self.record.memo = output
-        self.record.save()
+        return result    
         
                     
 def sync_ms_db(request, platform):  
     print 'sync_ms_db'
     print request.REQUEST
+    
+    start_now = False
+    if 'start_now' in request.REQUEST:
+        if(request.REQUEST['start_now'] == 'on'):
+            start_now = True
     
     now_time = time.localtime(time.time())
     today = time.strftime("%Y-%m-%d", now_time)
@@ -497,25 +414,43 @@ def sync_ms_db(request, platform):
     operation1['dispatch_time'] = dispatch_time
     operation1['memo'] = ''
         
+    return_datas = {}
     output = ''
     records = operation.views.get_operation_undone_by_type(platform, operation1['type'])
-    if(len(records) == 0):
-        record = operation.views.create_operation_record_by_dict(platform, operation1)
-        if(record != None):
-            output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
-            # start thread.
-            t = Thread_SYNC_MS_DB(platform, record)            
-            t.start()
-    else:
+    if(len(records) > 0):          
         for record in records:
             output += 'operation exist, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
+        return_datas['success'] = False
+        return_datas['data'] = output
+        return HttpResponse(json.dumps(return_datas)) 
     
-    return HttpResponse(output) 
+    record = operation.views.create_operation_record_by_dict(platform, operation1)
+    if(record == None):
+        output += 'operation create failure'
+        return_datas['success'] = False
+        return_datas['data'] = output
+        return HttpResponse(json.dumps(return_datas)) 
+        
+    output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
+    return_datas['success'] = False
+    return_datas['data'] = output
+        
+    if(start_now == True):
+        # start thread.
+        t = Thread_SYNC_MS_DB(platform, record)            
+        t.start()
+    
+    return HttpResponse(json.dumps(return_datas))
 
 
 def sync_ms_status(request, platform):  
     print 'sync_ms_status'
     print request.REQUEST
+    
+    start_now = False
+    if 'start_now' in request.REQUEST:
+        if(request.REQUEST['start_now'] == 'on'):
+            start_now = True
     
     now_time = time.localtime(time.time())
     today = time.strftime("%Y-%m-%d", now_time)
@@ -527,19 +462,32 @@ def sync_ms_status(request, platform):
     operation1['user'] = request.user.username
     operation1['dispatch_time'] = dispatch_time
     operation1['memo'] = ''
-        
+    
+    return_datas = {}
     output = ''
     records = operation.views.get_operation_undone_by_type(platform, operation1['type'])
-    if(len(records) == 0):
-        record = operation.views.create_operation_record_by_dict(platform, operation1)
-        if(record != None):
-            output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
-            # start thread.
-            t = Thread_SYNC_MS_STATUS(platform, record)            
-            t.start()
-    else:
+    if(len(records) > 0):          
         for record in records:
             output += 'operation exist, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
+        return_datas['success'] = False
+        return_datas['data'] = output
+        return HttpResponse(json.dumps(return_datas)) 
     
-    return HttpResponse(output)      
+    record = operation.views.create_operation_record_by_dict(platform, operation1)
+    if(record == None):
+        output += 'operation create failure'
+        return_datas['success'] = False
+        return_datas['data'] = output
+        return HttpResponse(json.dumps(return_datas)) 
+        
+    output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
+    return_datas['success'] = False
+    return_datas['data'] = output
+        
+    if(start_now == True):
+        # start thread.
+        t = Thread_SYNC_MS_STATUS(platform, record)            
+        t.start()
+    
+    return HttpResponse(json.dumps(return_datas))
 

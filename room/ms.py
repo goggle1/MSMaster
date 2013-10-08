@@ -252,10 +252,10 @@ class MS_ALL:
         values['t']         = t
         values['sign']      = sign
         
-        MACROSS_IP = '192.168.160.128'
-        MACROSS_PORT = 80
-        #MACROSS_IP = 'macross.funshion.com'
-        #MACROSS_PORT = 27777
+        #MACROSS_IP = '192.168.160.128'
+        #MACROSS_PORT = 80
+        MACROSS_IP = 'macross.funshion.com'
+        MACROSS_PORT = 27777
         url = 'http://%s:%d/api/?cli=ms&cmd=report_cold_task' % (MACROSS_IP, MACROSS_PORT)
         print url
         print 'num=%d' % (num)

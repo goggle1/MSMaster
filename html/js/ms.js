@@ -193,6 +193,7 @@ var msJS = function(){
 		
 	};
 	
+	/*
 	this.sync_ms_db = function() 
 	{
 		Ext.Ajax.request({
@@ -206,7 +207,91 @@ var msJS = function(){
 			}			
 		});
 	}
+	*/
 	
+	this.sync_ms_db = function() 
+	{
+		//避免win的重复生成
+		if(Ext.get("sync_ms_db_win_" + self.plat)){
+			Ext.getCmp("sync_ms_db_win_" + self.plat).show();
+			return true;
+		}
+		
+		var sync_ms_db_form = new Ext.FormPanel({
+			id: 'sync_ms_db_form',
+			autoWidth: true,//自动调整宽度
+			url:'',
+			frame:true,
+			monitorValid : true,
+			bodyStyle:'padding:5px 5px 0',
+			labelWidth:150,
+			defaults:{xtype:'textfield',width:200},
+			items: [									
+				{
+				    xtype:'checkbox',
+				    id: 'start_now',
+				    name: 'start_now',
+				    //align:'left',
+				    fieldLabel:'是否立即执行',
+				    checked: false
+				}	
+			],
+			buttons: [{
+				text: '确定',
+				handler: self.syncMsDbEnd,
+				formBind : true
+			},{
+				text: '取消',
+				handler: function(){Ext.getCmp("sync_ms_db_win_" + self.plat).close();}
+			}]
+		});
+		
+		var win = new Ext.Window({
+			width:400,height:110,minWidth:200,minHeight:100,
+			autoScroll:'auto',
+			title : "同步MS数据库",
+			id : "sync_ms_db_win_" + self.plat,
+			//renderTo: "ext_room",
+			collapsible: true,
+			modal:false,	//True 表示为当window显示时对其后面的一切内容进行遮罩，false表示为限制对其它UI元素的语法（默认为 false
+			//所谓布局就是指容器组件中子元素的分布，排列组合方式
+			layout: 'form',//layout布局方式为form
+			maximizable:true,
+			minimizable:false,
+			items: sync_ms_db_form
+		}).show();
+	}
+	
+	this.syncMsDbEnd = function() {
+		Ext.getCmp("sync_ms_db_form").form.submit({
+			waitMsg : '正在修改......',
+			url : '/sync_ms_db/' + self.plat + '/',
+			method : 'post',
+			timeout : 5000,//5秒超时, 
+			params : '',
+			success : function(form, action) {
+				var result = Ext.util.JSON.decode(action.response.responseText);
+				Ext.getCmp("sync_ms_db_win_" + self.plat).close();
+				Ext.MessageBox.alert('成功', result.data);
+				//self.task_store.reload();			//重新载入数据，即根据当前页面的条件，刷新用户页面
+			},
+			failure : function(form, action) {
+				alert('失败:' + action.response.responseText);
+				if(typeof(action.response) == 'undefined'){
+					Ext.MessageBox.alert('警告','添加失败，请重新添加！');
+				} else {
+					var result = Ext.util.JSON.decode(action.response.responseText);
+					if(action.failureType == Ext.form.Action.SERVER_INVALID){
+						Ext.MessageBox.alert('警告', result.data);
+					}else{
+						Ext.MessageBox.alert('警告','表单填写异常，请重新填写！');
+					}
+				}
+			}
+		});
+	};
+	
+	/*
 	this.sync_ms_status = function() 
 	{
 		Ext.Ajax.request({
@@ -220,6 +305,90 @@ var msJS = function(){
 			}			
 		});
 	}
+	*/
+	
+	this.sync_ms_status = function() 
+	{
+		//避免win的重复生成
+		if(Ext.get("sync_ms_status_win_" + self.plat)){
+			Ext.getCmp("sync_ms_status_win_" + self.plat).show();
+			return true;
+		}
+		
+		var sync_ms_status_form = new Ext.FormPanel({
+			id: 'sync_ms_status_form',
+			autoWidth: true,//自动调整宽度
+			url:'',
+			frame:true,
+			monitorValid : true,
+			bodyStyle:'padding:5px 5px 0',
+			labelWidth:150,
+			defaults:{xtype:'textfield',width:200},
+			items: [									
+				{
+				    xtype:'checkbox',
+				    id: 'start_now',
+				    name: 'start_now',
+				    //align:'left',
+				    fieldLabel:'是否立即执行',
+				    checked: false
+				}	
+			],
+			buttons: [{
+				text: '确定',
+				handler: self.syncMsStatusEnd,
+				formBind : true
+			},{
+				text: '取消',
+				handler: function(){Ext.getCmp("sync_ms_status_win_" + self.plat).close();}
+			}]
+		});
+		
+		var win = new Ext.Window({
+			width:400,height:110,minWidth:200,minHeight:100,
+			autoScroll:'auto',
+			title : "同步MS状态",
+			id : "sync_ms_status_win_" + self.plat,
+			//renderTo: "ext_room",
+			collapsible: true,
+			modal:false,	//True 表示为当window显示时对其后面的一切内容进行遮罩，false表示为限制对其它UI元素的语法（默认为 false
+			//所谓布局就是指容器组件中子元素的分布，排列组合方式
+			layout: 'form',//layout布局方式为form
+			maximizable:true,
+			minimizable:false,
+			items: sync_ms_db_form
+		}).show();
+	}
+	
+	this.syncMsStatusEnd = function() {
+		Ext.getCmp("sync_ms_status_form").form.submit({
+			waitMsg : '正在修改......',
+			url : '/sync_ms_status/' + self.plat + '/',
+			method : 'post',
+			timeout : 5000,//5秒超时, 
+			params : '',
+			success : function(form, action) {
+				var result = Ext.util.JSON.decode(action.response.responseText);
+				Ext.getCmp("sync_ms_status_win_" + self.plat).close();
+				Ext.MessageBox.alert('成功', result.data);
+				//self.task_store.reload();			//重新载入数据，即根据当前页面的条件，刷新用户页面
+			},
+			failure : function(form, action) {
+				alert('失败:' + action.response.responseText);
+				if(typeof(action.response) == 'undefined'){
+					Ext.MessageBox.alert('警告','添加失败，请重新添加！');
+				} else {
+					var result = Ext.util.JSON.decode(action.response.responseText);
+					if(action.failureType == Ext.form.Action.SERVER_INVALID){
+						Ext.MessageBox.alert('警告', result.data);
+					}else{
+						Ext.MessageBox.alert('警告','表单填写异常，请重新填写！');
+					}
+				}
+			}
+		});
+	};
+	
 	
 	this.refresh_ms_list = function() 
 	{

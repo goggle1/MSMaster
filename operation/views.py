@@ -7,7 +7,7 @@ import models
 import string
 import threading
 import time
-#from task.views import do_sync
+import MS.views
 import task.views
 import room.views
 
@@ -166,8 +166,18 @@ class Thread_JOBS(threading.Thread):
             result = task.views.do_upload(self.platform, operation)
         elif(operation.type == 'calc_cold'):
             result = task.views.do_cold(self.platform, operation)
+        elif(operation.type == 'sync_ms_db'):
+            result = MS.views.do_sync_ms_db(self.platform, operation)
+        elif(operation.type == 'sync_ms_status'):
+            result = MS.views.do_sync_ms_status(self.platform, operation)
+        elif(operation.type == 'sync_room_db'):
+            result = room.views.do_sync_room_db(self.platform, operation)
+        elif(operation.type == 'sync_room_status'):
+            result = room.views.do_sync_room_status(self.platform, operation)
+        elif(operation.type == 'delete_cold_tasks'):
+            result = room.views.do_delete_cold_tasks(self.platform, operation)  
         elif(operation.type == 'add_hot_tasks'):
-            result = room.views.do_add_hot_tasks(self.platform, operation)
+            result = room.views.do_add_hot_tasks(self.platform, operation)      
         else:
             print 'unknown operation type: %s' % (operation.type)
             
@@ -190,7 +200,13 @@ def operation_type_int(v_type):
     result = 0
     type_dict = {   'sync_hash_db':1,       \
                     'upload_hits_num':2,    \
-                    'calc_cold':3           \
+                    'calc_cold':3,          \
+                    'sync_ms_db':4,         \
+                    'sync_ms_status':5,     \
+                    'sync_room_db':6,       \
+                    'sync_room_status':7,   \
+                    'delete_cold_tasks':8,  \
+                    'add_hot_tasks':9       \
                 }
     if(type_dict.has_key(v_type) == True):
         result = type_dict[v_type]        
