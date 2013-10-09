@@ -50,7 +50,7 @@ var roomJS = function(){
 			{header : 'ms_number', id : 'ms_number', dataIndex : 'ms_number', sortable : true},
 			{header : 'task_number', id : 'task_number', dataIndex : 'task_number', sortable : true},
 			{header : 'total_disk_space', id : 'total_disk_space', dataIndex : 'total_disk_space', sortable : true},
-			{header : 'free_disk_space', id : 'free_disk_space', dataIndex : 'free_disk_space', sortable : true},
+			{header : 'free_disk_space', id : 'free_disk_space', dataIndex : 'free_disk_space', sortable : true, renderer : disk_status},
 			{header : 'suggest_task_number', id : 'suggest_task_number', dataIndex : 'suggest_task_number', sortable : true},
 			{header : 'num_dispatching', id : 'num_dispatching', dataIndex : 'num_dispatching', sortable : true},
 			{header : 'num_deleting', id : 'num_deleting', dataIndex : 'num_deleting', sortable : true},				
@@ -117,6 +117,7 @@ var roomJS = function(){
 				iconCls: 'modify',
 				handler: self.delete_cold_tasks
 			}],
+			listeners:{'render':createTbar},
 			bbar: room_page
 		});
 	
@@ -124,6 +125,112 @@ var roomJS = function(){
 		
 		main_panel.add(self.room_grid);
 		main_panel.setActiveTab(self.room_grid);
+		
+		function disk_status(value,metadata,record)
+		{
+	 		//var task_number = record.get('task_number');
+	 		//var total_task_num = record.get('total_task_num');
+	 		//if(task_number != total_task_num) metadata.css = 'bgred';
+	 		
+	 		if(value < 2000) 
+			{
+				metadata.css = 'bgred';
+			}			
+			return value; 
+		}
+		
+		//生成顶部工具条
+		function createTbar(){
+			var listener = {specialkey:function(field, e){if(e.getKey()==Ext.EventObject.ENTER){query_room();}}};
+			var oneTbar = new Ext.Toolbar({
+				items:['room_name: ',{
+						xtype:'textfield',
+						id:'room_name',
+						name:'room_name',
+						width:110
+					},"-",{
+						text:'搜索',
+						iconCls: 'search',
+						handler: query_room
+					},"-",{
+						text:'重置',
+						iconCls: 'reset',
+						handler: reset_query_room
+					}]
+			});
+			oneTbar.render(self.room_grid.tbar);
+		}
+		
+		
+		function query_room(){			
+			self.room_store.on('beforeload', function(obj) {
+				Ext.apply(obj.baseParams,{
+						'start':0,
+						'limit':room_page.pageSize,
+						'room_name':Ext.getCmp('room_name').getValue()
+						});
+			});			
+			self.room_store.load();
+		};
+		
+		function reset_query_room(){
+			//将查询条件置为空，不可以将查询条件的充值放到beforeload里
+			Ext.getCmp('room_name').setValue("");
+			query_room();
+		};
+		
+		//右键触发事件
+		function rightClickRowMenu(grid,rowIndex,cellIndex,e){
+			e.preventDefault();  		//禁用浏览器默认的右键 ，针对某一行禁用
+			if(rowIndex<0)return true;
+			var record = grid.getStore().getAt(rowIndex);   //获取当前行的记录
+	  		var cur_room_id = record.get('room_id');			//取得当前右键所在行的ROOM_ID
+			var t_sm = grid.getSelectionModel();
+			//此处为多选行，如果没有选择任意一行时，需要对右键当前行进行选中设置,如果当前右键所在行不在选择的行中，则移除所有选择的行，选择当前行，
+			var room_id_arr = [];
+			if(t_sm.getSelected()){
+				var recs=t_sm.getSelections(); // 把所有选中项放入数组
+				for(var i=0;i<recs.length;i++){
+					room_id_arr.push(recs[i].get("room_id"));
+				}
+			}
+			var param_id = "";
+			if(room_id_arr.indexOf(cur_room_id) < 0){
+				//如果当前右键所在行不在选择的行中，则移除所有选择的行，选择当前行，
+				//没有选择任意一行时,使用右键时，需要设置选中当前行
+				t_sm.clearSelections();
+				t_sm.selectRow(rowIndex);			//选中某一行
+				grid.getView().focusRow(rowIndex);			//获取焦点
+				param_id = cur_room_id;
+			}else{
+				param_id = room_id_arr.join(',');
+			}
+	  		//如果存在右键菜单，则需要清除右键里的所有菜单项item
+ 			if(Ext.get('room_right_menu')){
+ 				Ext.getCmp('room_right_menu').removeAll();
+ 			}
+ 			 			
+			//动态生成右键
+			var menu_items = [];
+			var auth_detail = {text:'机房详细状态',iconCls:'detail',handler:self.show_room_detail};
+			//var auth_modify = {text:'修改任务信息',iconCls:'modify',handler:self.modifyTaskInfo};
+			var auth_refresh = {text:'刷新机房列表',iconCls:'refresh',handler:self.refresh_room_list};
+			menu_items.push(auth_detail);
+			//menu_items.push(auth_modify);
+			menu_items.push(auth_refresh);
+			var rightMenu = new Ext.menu.Menu({
+							id:'room_right_menu',
+							items: menu_items
+						});
+			//定位。显示右键菜单
+			if(e.getXY()[0]==0||e.getXY()[1]==0)
+				rightMenu.show(grid.getView().getCell(rowIndex,cellIndex));
+			else
+				rightMenu.showAt(e.getXY());
+		}
+		// 给控件添加右键菜单触发事件(rowcontextmenu)
+		self.room_grid.addListener('cellcontextmenu', rightClickRowMenu);
+		self.room_grid.addListener('contextmenu', function(e){e.preventDefault(); }); 		//禁用浏览器默认的右键 ,针对grid禁用
 	
 	};
 	
@@ -498,7 +605,7 @@ var roomJS = function(){
 		});
 		
 		var win = new Ext.Window({
-			width:400,height:320,minWidth:200,minHeight:100,
+			width:400,height:341,minWidth:200,minHeight:100,
 			autoScroll:'auto',
 			title : "分发热门任务",
 			id : "add_hot_tasks_win_" + self.plat,
@@ -625,7 +732,7 @@ var roomJS = function(){
 		});
 		
 		var win = new Ext.Window({
-			width:400,height:320,minWidth:200,minHeight:100,
+			width:400,height:342,minWidth:200,minHeight:100,
 			autoScroll:'auto',
 			title : "删除冷门任务",
 			id : "delete_cold_tasks_win_" + self.plat,

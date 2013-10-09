@@ -62,15 +62,15 @@ var msJS = function(){
 			{header : 'identity_file', id : 'identity_file', dataIndex : 'identity_file', sortable : true, hidden: true},
 			{header : 'password', id : 'password', dataIndex : 'password', sortable : true, hidden: true},
 			{header : 'is_valid', id : 'is_valid', dataIndex : 'is_valid', sortable : true, hidden: true},
-			{header : 'is_dispatch', id : 'is_dispatch', dataIndex : 'is_dispatch', sortable : true},
-			{header : 'is_pause', id : 'is_pause', dataIndex : 'is_pause', sortable : true},
+			{header : 'is_dispatch', id : 'is_dispatch', dataIndex : 'is_dispatch', sortable : true, renderer : dispatch_status},
+			{header : 'is_pause', id : 'is_pause', dataIndex : 'is_pause', sortable : true, renderer : pause_status},
 			{header : 'task_number', id : 'task_number', dataIndex : 'task_number', sortable : true},
 			{header : 'server_status1', id : 'server_status1', dataIndex : 'server_status1', sortable : true, renderer : server_status},
 			{header : 'server_status2', id : 'server_status2', dataIndex : 'server_status2', sortable : true, renderer : server_status},
 			{header : 'server_status3', id : 'server_status3', dataIndex : 'server_status3', sortable : true, renderer : server_status, hidden: true},
 			{header : 'server_status4', id : 'server_status4', dataIndex : 'server_status4', sortable : true, renderer : server_status, hidden: true},
 			{header : 'total_disk_space', id : 'total_disk_space', dataIndex : 'total_disk_space', sortable : true},
-			{header : 'free_disk_space', id : 'free_disk_space', dataIndex : 'free_disk_space', sortable : true},
+			{header : 'free_disk_space', id : 'free_disk_space', dataIndex : 'free_disk_space', sortable : true, renderer : disk_status},
 			{header : 'check_time', id : 'check_time', dataIndex : 'check_time', sortable : true, xtype: 'datecolumn', format : 'Y-m-d H:i:s', width: 200}			
 		]);
 		
@@ -130,6 +130,7 @@ var msJS = function(){
 				iconCls: 'detail',
 				handler: self.show_ms_detail
 			}],
+			listeners:{'render':createTbar},
 			bbar: server_page
 		});
 		
@@ -138,6 +139,25 @@ var msJS = function(){
 		main_panel.add(self.server_grid);
 		main_panel.setActiveTab(self.server_grid);			
 
+		
+		function dispatch_status(value) {
+			switch(value) {
+				case "0": return '<span class="red">0:不可调度</span>'; break;
+				case "1": return '<span class="green">1:可调度</span>'; break;
+				default:
+					return '<span class="grey">' + value  + '</span>';
+			}
+		}
+		
+		function pause_status(value) {
+			switch(value) {
+				case "0": return '<span class="green">0:可分发</span>'; break;
+				case "1": return '<span class="red">1:不可分发</span>'; break;
+				default:
+					return '<span class="red">' + value  + '</span>';
+			}
+		}
+		
 		function server_status(value) {
 			switch(value) {
 				case "0": return '<span class="green">0</span>'; break;
@@ -145,6 +165,83 @@ var msJS = function(){
 					return '<span class="red">' + value  + '</span>';
 			}
 		}
+		
+		function disk_status(value,metadata,record)
+		{
+	 		//var task_number = record.get('task_number');
+	 		//var total_task_num = record.get('total_task_num');
+	 		//if(task_number != total_task_num) metadata.css = 'bgred';
+	 		
+	 		if(value < 500) 
+			{
+				metadata.css = 'bgred';
+			}			
+			return value; 
+		}
+		
+		//生成顶部工具条
+		function createTbar(){
+			var listener = {specialkey:function(field, e){if(e.getKey()==Ext.EventObject.ENTER){query_ms();}}};
+			var oneTbar = new Ext.Toolbar({
+				items:['server_name: ',{
+						xtype:'textfield',
+						id:'server_name',
+						name:'server_name',
+						width:110
+					},"-",
+					'server_ip: ',{
+						xtype:'textfield',
+						id:'server_ip',
+						name:'server_ip',
+						width:110
+					},"-",
+					'control_ip: ',{
+						xtype:'textfield',
+						id:'control_ip',
+						name:'control_ip',
+						width:110
+					},"-",
+					'room_name: ',{
+						xtype:'textfield',
+						id:'room_name',
+						name:'room_name',
+						width:110
+					},"-",{
+						text:'搜索',
+						iconCls: 'search',
+						handler: query_ms
+					},"-",{
+						text:'重置',
+						iconCls: 'reset',
+						handler: reset_query_ms
+					}]
+			});
+			oneTbar.render(self.server_grid.tbar);
+		}
+		
+		
+		function query_ms(){			
+			self.server_store.on('beforeload', function(obj) {
+				Ext.apply(obj.baseParams,{
+						'start':0,
+						'limit':server_page.pageSize,
+						'server_name':Ext.getCmp('server_name').getValue(),
+						'server_ip':Ext.getCmp('server_ip').getValue(),
+						'control_ip':Ext.getCmp('control_ip').getValue(),
+						'room_name':Ext.getCmp('room_name').getValue()
+						});
+			});			
+			self.server_store.load();
+		};
+		
+		function reset_query_ms(){
+			//将查询条件置为空，不可以将查询条件的充值放到beforeload里			
+			Ext.getCmp('server_name').setValue("");
+			Ext.getCmp('server_ip').setValue("");
+			Ext.getCmp('control_ip').setValue("");
+			Ext.getCmp('room_name').setValue("");
+			query_ms();
+		};
 
 		//右键触发事件
 		function rightClickRowMenu(grid, rowIndex, cellIndex, e) {
@@ -180,10 +277,23 @@ var msJS = function(){
 			if (Ext.get('server_right_menu')) {
 				Ext.getCmp('server_right_menu').removeAll();
 			}
-			//生成右键菜单
-			//Ext.Ajax.request({
-			//	url: '/server/get_options/',
-			//});
+			//动态生成右键
+			var menu_items = [];
+			var auth_detail = {text:'MS详细状态',iconCls:'detail',handler:self.show_ms_detail};
+			//var auth_modify = {text:'修改任务信息',iconCls:'modify',handler:self.modifyTaskInfo};
+			var auth_refresh = {text:'刷新MS列表',iconCls:'refresh',handler:self.refresh_ms_list};
+			menu_items.push(auth_detail);
+			//menu_items.push(auth_modify);
+			menu_items.push(auth_refresh);
+			var rightMenu = new Ext.menu.Menu({
+							id:'task_right_menu',
+							items: menu_items
+						});
+			//定位。显示右键菜单
+			if(e.getXY()[0]==0||e.getXY()[1]==0)
+				rightMenu.show(grid.getView().getCell(rowIndex,cellIndex));
+			else
+				rightMenu.showAt(e.getXY());
 		}
 		
 		
@@ -356,7 +466,7 @@ var msJS = function(){
 			layout: 'form',//layout布局方式为form
 			maximizable:true,
 			minimizable:false,
-			items: sync_ms_db_form
+			items: sync_ms_status_form
 		}).show();
 	}
 	

@@ -103,6 +103,7 @@ var operationJS = function(){
 				iconCls: 'detail',
 				handler: self.show_operation_detail
 			}],
+			listeners:{'render':createTbar},
 			bbar: operation_page
 		});
 		
@@ -110,14 +111,90 @@ var operationJS = function(){
 		
 		main_panel.add(self.operation_grid);
 		main_panel.setActiveTab(self.operation_grid);			
-
-		function operation_status(value) {
+	
+		
+		function operation_status(value,metadata,record) {
 			switch(value) {
-				case "0": return '<span class="green">0</span>'; break;
+				case "0": 
+					metadata.css = 'bgyellow';
+					return '0:dispatched'; 
+					break;
+				case "1": 
+					metadata.css = 'bggreen';
+					return '1:doing'; 
+					break;
+				case "2": 
+					//metadata.css = 'bggreen';
+					return '2:done'; 
+					break;
 				default:
-					return '<span class="red">' + value  + '</span>';
+					return '<span class="black">' + value  + '</span>';
 			}
 		}
+		
+		//生成顶部工具条
+		function createTbar(){
+			var listener = {specialkey:function(field, e){if(e.getKey()==Ext.EventObject.ENTER){query_operation();}}};
+			var oneTbar = new Ext.Toolbar({
+				items:['type: ',{
+						xtype:'textfield',
+						id:'type',
+						name:'type',
+						width:110
+					},"-",
+					'name: ',{
+						xtype:'textfield',
+						id:'name',
+						name:'name',
+						width:110
+					},"-",
+					'user: ',{
+						xtype:'textfield',
+						id:'user',
+						name:'user',
+						width:110
+					},"-",
+					'status: ',{
+						xtype:'textfield',
+						id:'status',
+						name:'status',
+						width:110
+					},"-",{
+						text:'搜索',
+						iconCls: 'search',
+						handler: query_operation
+					},"-",{
+						text:'重置',
+						iconCls: 'reset',
+						handler: reset_query_operation
+					}]
+			});
+			oneTbar.render(self.operation_grid.tbar);
+		}
+		
+		
+		function query_operation(){			
+			self.operation_store.on('beforeload', function(obj) {
+				Ext.apply(obj.baseParams,{
+						'start':0,
+						'limit':operation_page.pageSize,
+						'type':Ext.getCmp('type').getValue(),
+						'name':Ext.getCmp('name').getValue(),
+						'user':Ext.getCmp('user').getValue(),
+						'status':Ext.getCmp('status').getValue()
+						});
+			});			
+			self.operation_store.load();
+		};
+		
+		function reset_query_operation(){
+			//将查询条件置为空，不可以将查询条件的充值放到beforeload里			
+			Ext.getCmp('type').setValue("");
+			Ext.getCmp('name').setValue("");
+			Ext.getCmp('user').setValue("");
+			Ext.getCmp('status').setValue("");
+			query_operation();
+		};
 
 		//右键触发事件
 		function rightClickRowMenu(grid, rowIndex, cellIndex, e) {
@@ -125,38 +202,51 @@ var operationJS = function(){
 			if (rowIndex < 0)
 				return true;
 			var record = grid.getStore().getAt(rowIndex);//获取当前行的纪录
-			var server_id = record.get('server_id');
+			var operation_id = record.get('id');
 
 			var t_sm = grid.getSelectionModel();
 
 			//此处为多选行，如果没有选中任意一行时，需要对右键当前行进行选中设置
 			//如果右键当前行不在选中的行中，则移除所选的行，选择当前行
-			var server_id_arr = []
+			var operation_id_arr = []
 			if (t_sm.getSelected()) {
 				var recs = t_sm.getSelections();
 				for (var i = 0; i < recs.length; i++) {
-					server_id_arr.push(recs[i].get('server_id'));
+					operation_id_arr.push(recs[i].get('id'));
 				}
 			}
 			var param_id = '';
-			if (server_id_arr.indexOf(server_id) < 0) {
+			if (operation_id_arr.indexOf(operation_id) < 0) {
 				//当前行没有选中
 				t_sm.clearSelections();
 				t_sm.selectRow(rowIndex);
 				grid.getView().focusRow(rowIndex);
-				param_id = server_id;
+				param_id = operation_id;
 			} else {
-				param_id = server_id_arr.join(',');
+				param_id = operation_id_arr.join(',');
 			}
 
 			//如果存在右键菜单，清楚菜单里的所有项
-			if (Ext.get('server_right_menu')) {
-				Ext.getCmp('server_right_menu').removeAll();
+			if (Ext.get('operation_right_menu')) {
+				Ext.getCmp('operation_right_menu').removeAll();
 			}
-			//生成右键菜单
-			//Ext.Ajax.request({
-			//	url: '/server/get_options/',
-			//});
+			//动态生成右键
+			var menu_items = [];
+			var auth_detail = {text:'操作详细状态',iconCls:'detail',handler:self.show_operation_detail};
+			//var auth_modify = {text:'修改任务信息',iconCls:'modify',handler:self.modifyTaskInfo};
+			var auth_refresh = {text:'刷新操作列表',iconCls:'refresh',handler:self.refresh_operation_list};
+			menu_items.push(auth_detail);
+			//menu_items.push(auth_modify);
+			menu_items.push(auth_refresh);
+			var rightMenu = new Ext.menu.Menu({
+							id:'operation_right_menu',
+							items: menu_items
+						});
+			//定位。显示右键菜单
+			if(e.getXY()[0]==0||e.getXY()[1]==0)
+				rightMenu.show(grid.getView().getCell(rowIndex,cellIndex));
+			else
+				rightMenu.showAt(e.getXY());
 		}
 		
 		//给控键添加右键菜单触发事件

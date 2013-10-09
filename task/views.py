@@ -72,13 +72,18 @@ def get_task_list(request, platform):
     print request.REQUEST
             
     start = request.REQUEST['start']
-    limit = request.REQUEST['limit']
-    hash_id = ''
-    if(request.REQUEST.has_key('hash') == True):
-        hash_id = request.REQUEST['hash']
+    limit = request.REQUEST['limit']    
     start_index = string.atoi(start)
     limit_num = string.atoi(limit)
     print '%d,%d' % (start_index, limit_num)
+    
+    kwargs = {}
+    
+    hash_id = ''
+    if(request.REQUEST.has_key('hash') == True):
+        hash_id = request.REQUEST['hash']
+    if(hash_id != ''):
+        kwargs['hash'] = hash_id
     
     sort = ''
     if 'sort' in request.REQUEST:
@@ -97,39 +102,21 @@ def get_task_list(request, platform):
                 
     if(len(sort) > 0):
         order_condition += sort
-       
-    tasks2 = None
-    tasks1 = None
+    
     tasks = get_tasks_local(platform)
-    tasks1 = tasks
-    if(hash_id != ''):
-        tasks1 = tasks.filter(hash=hash_id)
-        
-    #now_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.localtime(time.time()))
-    #print now_time
-    if(len(order_condition) > 0):        
-        #tasks2 = models.mobile_task.objects.order_by(order_condition)[start_index:limit_num]
+    tasks1 = tasks.filter(**kwargs)
+    tasks2 = None
+    
+    if(len(order_condition) > 0):
         tasks2 = tasks1.order_by(order_condition)[start_index:start_index+limit_num]     
-    else:
-        #tasks2 = models.mobile_task.objects.all()[start_index:limit_num]
+    else:        
         tasks2 = tasks1[start_index:start_index+limit_num]
-    #now_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.localtime(time.time()))
-    #print now_time
-        
-    return_datas = {'success':True, 'data':[]}
-    #now_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.localtime(time.time()))
-    #print now_time
+            
+    return_datas = {'success':True, 'data':[]}    
     return_datas['total_count'] = tasks1.count()
-    print tasks.count()
-    #now_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.localtime(time.time()))
-    #print now_time
-        
-    #now_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.localtime(time.time()))
-    #print now_time
+    
     for task in tasks2:        
-        return_datas['data'].append(task.todict())            
-    #now_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.localtime(time.time()))
-    #print now_time    
+        return_datas['data'].append(task.todict())
         
     return HttpResponse(json.dumps(return_datas))
 
@@ -301,10 +288,10 @@ def upload_sub_hits_num(platform, previous_day):
         if(len(items) >= 2):
             hits_num = items[0].strip()
             hash_id = items[1].strip()
-            print '%s, %s' % (hits_num, hash_id)
+            #print '%s, %s' % (hits_num, hash_id)
             task_list = hash_list_local.filter(hash=hash_id)
             if(len(task_list) > 0):
-                print 'update -' 
+                #print '%s, %s [update -]' % (hits_num, hash_id)
                 hash_local = task_list[0]
                 if(hash_local.hot > string.atoi(hits_num)): 
                     hash_local.hot -= string.atoi(hits_num)
@@ -313,11 +300,11 @@ def upload_sub_hits_num(platform, previous_day):
                 hash_local.save()
                 num_update2 += 1
             else:
-                print 'insert -' 
+                print '%s, %s [insert -]' % (hits_num, hash_id)
                 num_insert2 += 1
         line_num += 1
-        #if(line_num > 55):
-        #    break
+        if(line_num % 100 == 0):
+            print 'file=%s, line_num=%d' % (upload_file, line_num)
     hits_file.close()
     print 'sub_hits_num line_num=%d, num_insert2=%d, num_update2=%d' % (line_num, num_insert2, num_update2)        
     return (True, num_insert2, num_update2)
@@ -356,24 +343,18 @@ def upload_add_hits_num(platform, hits_date):
         if(len(items) >= 2):
             hits_num = items[0].strip()
             hash_id = items[1].strip()
-            print '%s, %s' % (hits_num, hash_id)
+            #print '%s, %s' % (hits_num, hash_id)
             task_list = hash_list_local.filter(hash=hash_id)
-            #task_list = get_tasks_by_hash(platform, hash_id)
-            #task_list = None
-            #if(platform == 'mobile'):
-            #    task_list = models.mobile_task.objects.filter(hash=hash_id)
-            #elif(platform == 'pc'):
-            #    task_list = models.pc_task.objects.filter(hash=hash_id) 
             if(task_list.count() > 0):
-                #print 'update %s' % (hash_id)
+                #print '%s, %s [update +]' % (hits_num, hash_id)
                 hash_local = task_list[0]
                 # if last_hit_time is equal to hits_time, it's updated, then do nothing
-                print '%s ? %s' % (str(hash_local.last_hit_time), hits_time)
+                #print '%s ? %s' % (str(hash_local.last_hit_time), hits_time)
                 if(str(hash_local.last_hit_time) != hits_time):
                     hash_local.hot += string.atoi(hits_num)
                     # if last_hit_time < hits_time, update last_hit_time
                     compare_r = cmp(str(hash_local.last_hit_time), hits_time)
-                    print 'cmp %s ? %s return %d' % (str(hash_local.last_hit_time), hits_time, compare_r)
+                    #print 'cmp %s ? %s return %d' % (str(hash_local.last_hit_time), hits_time, compare_r)
                     if(hash_local.last_hit_time == None) or (compare_r < 0):
                         hash_local.last_hit_time = hits_time
                         hash_local.cold1 = 0.0
@@ -381,13 +362,13 @@ def upload_add_hits_num(platform, hits_date):
                     hash_local.save()
                 num_update += 1
             else:
-                print 'insert %s' % (hash_id) 
+                print '%s, %s [insert +]' % (hits_num, hash_id)
                 v_hits_num = string.atoi(hits_num)
                 task_insert(platform, hash_id, '2000-01-01T00:00:00+00:00', 1, v_hits_num, 0.0, 0.0, 0.0, hits_time, v_hits_num)
                 num_insert += 1
         line_num += 1
-        #if(line_num > 55):
-        #    break
+        if(line_num % 100 == 0):
+            print 'file=%s, line_num=%d' % (upload_file, line_num)
         
     hits_file.close()        
     print 'add_hits_num line_num=%d, num_insert=%d, num_update=%d' % (line_num, num_insert, num_update)            

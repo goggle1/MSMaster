@@ -6,22 +6,14 @@ import json
 import models
 import time
 import string
-#import MS.models
+
 import DB.db
-#from DB.db import *
 import MS.models
-#from MS.models import mobile_ms_server
-#from MS.models import pc_ms_server
 import operation.views
-#from operation.views import get_operation_record
-#from operation.views import get_operation_record_undone
-#from operation.views import create_operation_record
-#from task.views import get_tasks_local
 import task.views
 import threading
 from ms import *
 import MS.views
-#from MS.views import get_ms_status
                                            
 def room_insert(platform, v_room_id, v_room_name, v_is_valid, v_check_time):
     if(platform == 'mobile'): 
@@ -90,6 +82,16 @@ def get_room_list(request, platform):
     start_index = string.atoi(start)
     limit_num = string.atoi(limit)
     
+    kwargs = {}
+    
+    v_room_name = ''
+    if 'room_name' in request.REQUEST:
+        v_room_name = request.REQUEST['room_name']
+    if(v_room_name != ''):
+        kwargs['room_name__contains'] = v_room_name
+    
+    print kwargs
+    
     sort = ''
     if 'sort' in request.REQUEST:
         sort  = request.REQUEST['sort']
@@ -108,15 +110,16 @@ def get_room_list(request, platform):
     if(len(sort) > 0):
         order_condition += sort
     
-    rooms = get_room_local(platform) 
-    rooms2 = []
+    rooms = get_room_local(platform)
+    rooms1 = rooms.filter(**kwargs)
+    rooms2 = None
     if(len(order_condition) > 0):
-        rooms2 = rooms.order_by(order_condition)[start_index:start_index+limit_num]
+        rooms2 = rooms1.order_by(order_condition)[start_index:start_index+limit_num]
     else:
-        rooms2 = rooms[start_index:start_index+limit_num]
+        rooms2 = rooms1[start_index:start_index+limit_num]
     
     return_datas = {'success':True, 'data':[]}
-    return_datas['total_count'] = rooms.count()
+    return_datas['total_count'] = rooms1.count()
     for room in rooms2:
         return_datas['data'].append(room.todict())
         
@@ -225,25 +228,24 @@ def do_add_hot_tasks(platform, record):
     #hot_tasks = tasks.order_by('-hot')
     hot_tasks = tasks.filter(hot__gt=0).order_by('-hot')
     print 'hot_tasks count: %d' % (hot_tasks.count())
-    for task in hot_tasks:
-        print 'hot task: %d %s' % (task.hot, task.hash)
-        one_ms = ms_all.find_task(task.hash)
-        if(one_ms == None):
-            print '%s dispatched' % (task.hash)            
-            result = ms_all.dispatch_hot_task(task.hash)
+    for task1 in hot_tasks:
+        print 'hot task: %d, %s' % (task1.hot, task1.hash)
+        one_ms = ms_all.find_task(task1.hash)
+        if(one_ms == None):                        
+            result = ms_all.dispatch_hot_task(task1.hash)
             if(result == None):
-                print '%s can not dispatched\n' % (task.hash) 
-                log_file.write('%s can not dispatched\n' % (task.hash))
+                print '%d, %s, can not be dispatched\n' % (task1.hot, task1.hash) 
+                log_file.write('%d, %s, can not be dispatched\n' % (task1.hot, task1.hash))
                 break
             else:
-                print '%s dispatched to %s\n' % (task.hash, str(result.db_record.controll_ip))
-                log_file.write('%s dispatched to %s\n' % (task.hash, str(result.db_record.controll_ip)))
+                print '%d, %s, dispatched to %d, %s' % (task1.hot, task1.hash, result.db_record.server_id, result.db_record.controll_ip)
+                log_file.write('%d, %s, dispatched to %d, %s\n' % (task1.hot, task1.hash, result.db_record.server_id, result.db_record.controll_ip))
             num += 1
             if(num >= total_dispatch_num):
                 break
         else:
-            print '%s exist at %s' % (task.hash, one_ms.db_record.controll_ip)
-            log_file.write('%s exist at %s\n' % (task.hash, one_ms.db_record.controll_ip))
+            print '%d, %s, exist at %d, %s' % (task1.hot, task1.hash, one_ms.db_record.server_id, one_ms.db_record.controll_ip)
+            log_file.write('%d, %s, exist at %d, %s\n' % (task1.hot, task1.hash, one_ms.db_record.server_id, one_ms.db_record.controll_ip))
 
     log_file.close()
     
@@ -331,14 +333,15 @@ def do_delete_cold_tasks(platform, record):
     result = False
     tasks = task.views.get_tasks_local(platform) 
     print 'tasks count: %d' % (tasks.count())
-    cold_tasks = tasks.filter(cold1__lt=-60.0).order_by('cold1', 'hot')
+    #cold_tasks = tasks.filter(cold1__lt=-60.0).order_by('cold1', 'hot')
+    cold_tasks = tasks.filter(cold1__lt=-10.0).order_by('cold1', 'hot')
     #cold_tasks = tasks.order_by('cold1', 'hot')
     print 'cold_tasks count: %d' % (cold_tasks.count())
     for task1 in cold_tasks:
         one_ms = ms_all.find_task(task1.hash)
         if(one_ms != None):
             #print '%s delete' % (task1.hash)
-            log_file.write('[%f]%s delete from %s\n' % (task1.cold1, task1.hash, one_ms.db_record.controll_ip))
+            log_file.write('[%f]%s delete from %d, %s\n' % (task1.cold1, task1.hash, one_ms.db_record.server_id, one_ms.db_record.controll_ip))
             result = ms_all.delete_cold_task(one_ms, task1.hash)
             if(result == False):
                 break
@@ -577,6 +580,11 @@ def add_hot_tasks(request, platform):
     print 'add_hot_tasks'
     print request.REQUEST
     
+    start_now = False
+    if 'start_now' in request.REQUEST:
+        if(request.REQUEST['start_now'] == 'on'):
+            start_now = True
+            
     v_room_id = request.REQUEST['room_id']
     v_suggest_task_number = request.REQUEST['suggest_task_number']
     v_num_dispatching = request.REQUEST['num_dispatching']
@@ -604,26 +612,39 @@ def add_hot_tasks(request, platform):
     operation1['memo'] = '%s|%s' % (v_suggest_task_number, v_num_dispatching)
         
     output = ''
-    records = operation.views.get_operation_record_undone(platform, operation1['type'], operation1['name'])
-    if(len(records) == 0):
-        record = operation.views.create_operation_record_by_dict(platform, operation1)
-        if(record != None):
-            output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
-            # start thread.
-            t = Thread_ADD_HOT_TASKS(platform, record)            
-            t.start()
-    else:
+    records = operation.views.get_operation_record_undone(platform, operation1['type'], operation1['name'])    
+    if(len(records) > 0):
         for record in records:
             output += 'operation exist, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
+        return_datas = {'success':False, 'data':output} 
+        return HttpResponse(json.dumps(return_datas))
+        
+    record = operation.views.create_operation_record_by_dict(platform, operation1)
+    if(record == None):
+        output += 'operation create failure'
+        return_datas = {'success':False, 'data':output} 
+        return HttpResponse(json.dumps(return_datas)) 
+    
+    output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)    
+    
+    if(start_now == True):
+        # start thread.
+        t = Thread_ADD_HOT_TASKS(platform, record)            
+        t.start()    
     
     return_datas = {'success':True, 'data':output, "dispatch_time":dispatch_time}    
-    return HttpResponse(json.dumps(return_datas))   
+    return HttpResponse(json.dumps(return_datas)) 
 
 
 def delete_cold_tasks(request, platform):
     print 'delete_cold_tasks'   
     print request.REQUEST  
     
+    start_now = False
+    if 'start_now' in request.REQUEST:
+        if(request.REQUEST['start_now'] == 'on'):
+            start_now = True
+            
     v_room_id = request.REQUEST['room_id']
     v_suggest_task_number = request.REQUEST['suggest_task_number']
     v_num_deleting = request.REQUEST['num_deleting']    
@@ -649,22 +670,30 @@ def delete_cold_tasks(request, platform):
     operation1['user'] = request.user.username
     operation1['dispatch_time'] = dispatch_time
     operation1['memo'] = '%s|%s' % (v_suggest_task_number, v_num_deleting)
-        
+    
     output = ''
     records = operation.views.get_operation_record_undone(platform, operation1['type'], operation1['name'])
-    if(len(records) == 0):
-        record = operation.views.create_operation_record_by_dict(platform, operation1)
-        if(record != None):
-            output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
-            # start thread.
-            t = Thread_DELETE_COLD_TASKS(platform, record)            
-            t.start()
-    else:
+    if(len(records) > 0):
         for record in records:
             output += 'operation exist, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
+        return_datas = {'success':False, 'data':output} 
+        return HttpResponse(json.dumps(return_datas))
+        
+    record = operation.views.create_operation_record_by_dict(platform, operation1)
+    if(record == None):
+        output += 'operation create failure'
+        return_datas = {'success':False, 'data':output} 
+        return HttpResponse(json.dumps(return_datas)) 
+    
+    output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)    
+    
+    if(start_now == True):
+        # start thread.
+        t = Thread_DELETE_COLD_TASKS(platform, record)            
+        t.start()    
     
     return_datas = {'success':True, 'data':output, "dispatch_time":dispatch_time}    
-    return HttpResponse(json.dumps(return_datas))   
+    return HttpResponse(json.dumps(return_datas))
 
 
 

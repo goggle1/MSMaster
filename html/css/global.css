@@ -26,6 +26,7 @@
 .thin{font-weight:normal;}
 .hidden{display:none;}
  /*color*/
+.yellow{color:#FF8040;}
 .red{color:red;}
 .grey{color:#888888;}
 .x-tree-imp-node a span{

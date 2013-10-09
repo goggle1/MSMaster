@@ -24,8 +24,11 @@ class MS_INFO:
         
         
 class MS_ALL:
-    #ms_list = []
-    #round_robin_index = 0
+    MACROSS_IP = '192.168.160.128'
+    MACROSS_PORT = 80
+    #MACROSS_IP = 'macross.funshion.com'
+    #MACROSS_PORT = 27777
+    BATCH_NUM = 2000
     
     def __init__(self, v_platform, v_ms_list):
         self.ms_list = []
@@ -115,13 +118,15 @@ class MS_ALL:
         if(the_ms == None):
             return None
         the_ms.change_list.append(task_hash)
-        self.round_robin_index = ms_index
+        self.round_robin_index = ms_index + 1
+        if(self.round_robin_index >= len(self.ms_list)):
+                self.round_robin_index = self.round_robin_index % len(self.ms_list)
         return the_ms
         
     
     def delete_cold_task(self, one_ms, task_hash): 
         one_ms.change_list.append(task_hash)
-        print '%s delete task %s' % (one_ms.db_record.controll_ip, task_hash)            
+        print '%d, %s delete task %s' % (one_ms.db_record.server_id, one_ms.db_record.controll_ip, task_hash)            
         return True
     
     
@@ -166,17 +171,12 @@ class MS_ALL:
         values['ctime']     = str(ctime)
         values['t']         = t
         values['sign']      = sign
-        
-        MACROSS_IP = '192.168.160.128'
-        MACROSS_PORT = 80
-        #MACROSS_IP = 'macross.funshion.com'
-        #MACROSS_PORT = 27777
-        url = 'http://%s:%d/api/?cli=ms&cmd=report_hot_task' % (MACROSS_IP, MACROSS_PORT)
-        print url
-        print 'num=%d' % (num)
+                
+        url = 'http://%s:%d/api/?cli=ms&cmd=report_hot_task' % (self.MACROSS_IP, self.MACROSS_PORT)
+        print 'num=%d, url=%s' % (num, url)
         
         data = urllib.urlencode(values)
-        print data
+        #print data
         req = urllib2.Request(url, data)
         response = urllib2.urlopen(req)
         the_page = response.read()
@@ -185,15 +185,13 @@ class MS_ALL:
         return True        
         
         
-    def dispatch_to_ms(self, one):        
-        BATCH_NUM = 2000                 
-        
+    def dispatch_to_ms(self, one):
         num = 0
         batch_list = []
         for task_hash in one.change_list:
             batch_list.append(task_hash)
             num += 1 
-            if(num>=BATCH_NUM):
+            if(num>=self.BATCH_NUM):
                 self.dispatch_batch(one, batch_list)                
                 num = 0
                 batch_list = []
@@ -251,17 +249,12 @@ class MS_ALL:
         values['ctime']     = str(ctime)
         values['t']         = t
         values['sign']      = sign
-        
-        #MACROSS_IP = '192.168.160.128'
-        #MACROSS_PORT = 80
-        MACROSS_IP = 'macross.funshion.com'
-        MACROSS_PORT = 27777
-        url = 'http://%s:%d/api/?cli=ms&cmd=report_cold_task' % (MACROSS_IP, MACROSS_PORT)
-        print url
-        print 'num=%d' % (num)
+                
+        url = 'http://%s:%d/api/?cli=ms&cmd=report_cold_task' % (self.MACROSS_IP, self.MACROSS_PORT)        
+        print 'num=%d, url=%s' % (num, url)
         
         data = urllib.urlencode(values)
-        print data
+        #print data
         req = urllib2.Request(url, data)
         response = urllib2.urlopen(req)
         the_page = response.read()
@@ -270,15 +263,13 @@ class MS_ALL:
         return True        
     
     
-    def delete_from_ms(self, one):        
-        BATCH_NUM = 2000                 
-        
+    def delete_from_ms(self, one):
         num = 0
         batch_list = []
         for task_hash in one.change_list:
             batch_list.append(task_hash)
             num += 1 
-            if(num>=BATCH_NUM):
+            if(num>=self.BATCH_NUM):
                 self.delete_batch(one, batch_list)                
                 num = 0
                 batch_list = []

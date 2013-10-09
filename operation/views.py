@@ -90,6 +90,34 @@ def get_operation_list(request, platform):
     start_index = string.atoi(start)
     limit_num = string.atoi(limit)
     
+    kwargs = {}
+    
+    v_type = ''
+    if 'type' in request.REQUEST:
+        v_type = request.REQUEST['type']
+    if(v_type != ''):
+        kwargs['type__contains'] = v_type
+            
+    v_name = ''
+    if 'name' in request.REQUEST:
+        v_name = request.REQUEST['name']
+    if(v_name != ''):
+        kwargs['name__contains'] = v_name
+    
+    v_user = ''
+    if 'user' in request.REQUEST:
+        v_user = request.REQUEST['user']
+    if(v_user != ''):
+        kwargs['user__contains'] = v_user
+        
+    v_status = ''
+    if 'status' in request.REQUEST:
+        v_status = request.REQUEST['status']
+    if(v_status != ''):
+        kwargs['status'] = v_status
+    
+    print kwargs
+    
     sort = ''
     if 'sort' in request.REQUEST:
         sort  = request.REQUEST['sort']
@@ -109,14 +137,15 @@ def get_operation_list(request, platform):
         order_condition += sort
     
     operations = get_operation_local(platform)
-    operations2 = []
+    operations1 = operations.filter(**kwargs)
+    operations2 = None
     if(len(order_condition) > 0):
-        operations2 = operations.order_by(order_condition)[start_index:start_index+limit_num]
+        operations2 = operations1.order_by(order_condition)[start_index:start_index+limit_num]
     else:
-        operations2 = operations[start_index:start_index+limit_num]
+        operations2 = operations1[start_index:start_index+limit_num]
     
     return_datas = {'success':True, 'data':[]}
-    return_datas['total_count'] = operations.count()
+    return_datas['total_count'] = operations1.count()
     for operation in operations2:
         return_datas['data'].append(operation.todict())
         

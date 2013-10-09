@@ -134,10 +134,39 @@ def get_ms_list(request, platform):
     print 'get_ms_list'
     print request.REQUEST
     
+    #{u'server_name': u'TY', u'room_name': u'', u'start': u'0', u'limit': u'20', u'server_ip': u'', u'control_ip': u''}
     start = request.REQUEST['start']
     limit = request.REQUEST['limit']
     start_index = string.atoi(start)
     limit_num = string.atoi(limit)
+    
+    kwargs = {}
+    
+    v_server_name = ''
+    if 'server_name' in request.REQUEST:
+        v_server_name = request.REQUEST['server_name']
+    if(v_server_name != ''):
+        kwargs['server_name__contains'] = v_server_name
+            
+    v_server_ip = ''
+    if 'server_ip' in request.REQUEST:
+        v_server_ip = request.REQUEST['server_ip']
+    if(v_server_ip != ''):
+        kwargs['server_ip'] = v_server_ip
+    
+    v_control_ip = ''
+    if 'control_ip' in request.REQUEST:
+        v_control_ip = request.REQUEST['control_ip']
+    if(v_control_ip != ''):
+        kwargs['controll_ip'] = v_control_ip
+        
+    v_room_name = ''
+    if 'room_name' in request.REQUEST:
+        v_room_name = request.REQUEST['room_name']
+    if(v_room_name != ''):
+        kwargs['room_name__contains'] = v_room_name
+    
+    print kwargs
     
     sort = ''
     if 'sort' in request.REQUEST:
@@ -155,17 +184,20 @@ def get_ms_list(request, platform):
             order_condition += '-'
                 
     if(len(sort) > 0):
-        order_condition += sort
+        order_condition += sort    
     
-    servers = get_ms_local(platform)    
-    servers2 = []
+    print order_condition
+    
+    servers = get_ms_local(platform)  
+    servers1 = servers.filter(**kwargs) 
+    servers2 = None
     if(len(order_condition) > 0):
-        servers2 = servers.order_by(order_condition)[start_index:start_index+limit_num]
+        servers2 = servers1.order_by(order_condition)[start_index:start_index+limit_num]
     else:
-        servers2 = servers[start_index:start_index+limit_num]
+        servers2 = servers1[start_index:start_index+limit_num]
     
     return_datas = {'success':True, 'data':[]}
-    return_datas['total_count'] = servers.count()
+    return_datas['total_count'] = servers1.count()
     for server in servers2:
         return_datas['data'].append(server.todict())
         
