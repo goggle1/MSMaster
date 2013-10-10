@@ -69,7 +69,7 @@ var msJS = function(){
 			{header : 'server_status2', id : 'server_status2', dataIndex : 'server_status2', sortable : true, renderer : server_status},
 			{header : 'server_status3', id : 'server_status3', dataIndex : 'server_status3', sortable : true, renderer : server_status, hidden: true},
 			{header : 'server_status4', id : 'server_status4', dataIndex : 'server_status4', sortable : true, renderer : server_status, hidden: true},
-			{header : 'total_disk_space', id : 'total_disk_space', dataIndex : 'total_disk_space', sortable : true},
+			{header : 'total_disk_space', id : 'total_disk_space', dataIndex : 'total_disk_space', sortable : true, renderer : disk_size},
 			{header : 'free_disk_space', id : 'free_disk_space', dataIndex : 'free_disk_space', sortable : true, renderer : disk_status},
 			{header : 'check_time', id : 'check_time', dataIndex : 'check_time', sortable : true, xtype: 'datecolumn', format : 'Y-m-d H:i:s', width: 200}			
 		]);
@@ -129,6 +129,14 @@ var msJS = function(){
 				text: 'MS详细状态',				
 				iconCls: 'detail',
 				handler: self.show_ms_detail
+			},'-',{				
+				text: '分发热门任务',				
+				iconCls: 'modify',
+				handler: self.add_hot_tasks
+			},'-',{				
+				text: '删除冷门任务',				
+				iconCls: 'modify',
+				handler: self.delete_cold_tasks
 			}],
 			listeners:{'render':createTbar},
 			bbar: server_page
@@ -166,19 +174,41 @@ var msJS = function(){
 			}
 		}
 		
-		function disk_status(value,metadata,record)
+		function disk_size(value)
+		{
+			var i = 0;
+			var n = 3;
+			var iec = Array("B","KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB");
+			while ((value/1024)>1)
+			{
+				value=value/1024;
+				i++;
+			}
+			return (Math.round(value)+iec[i+n]);
+		}
+		
+		function disk_status(value, metadata, record)
 		{
 	 		//var task_number = record.get('task_number');
 	 		//var total_task_num = record.get('total_task_num');
 	 		//if(task_number != total_task_num) metadata.css = 'bgred';
 	 		
-	 		if(value < 500) 
+	 		if(value < 2000) 
 			{
 				metadata.css = 'bgred';
-			}			
-			return value; 
+			}	
+			
+			var i = 0;
+			var n = 3;
+			var iec = Array("B","KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB");			
+			while ((value/1024)>1){
+				value=value/1024;
+				i++;
+			}
+			//return value; 
+			return (Math.round(value)+iec[i+n]);					
 		}
-		
+				
 		//生成顶部工具条
 		function createTbar(){
 			var listener = {specialkey:function(field, e){if(e.getKey()==Ext.EventObject.ENTER){query_ms();}}};
@@ -554,6 +584,160 @@ var msJS = function(){
 		});
 
 	};
+	
+	this.add_hot_tasks = function(){
+		var grid = self.server_grid;
+		var t_sm = grid.getSelectionModel();
+
+		if(!t_sm.getSelected()){
+			Ext.MessageBox.alert('提示','未选中记录');
+			return false;
+		}	
+		
+		
+		var suggest_task_number = 0;		
+		var num_dispatching = 0;
+		var num_deleting = 0;	
+		
+		var ms_num = 0;
+		var all_total_disk_space = 0;
+		var all_free_disk_space = 0;
+		var all_task_number = 0;
+		//此处为多选行，如果没有选中任意一行时，需要对右键当前行进行选中设置
+		//如果右键当前行不在选中的行中，则移除所选的行，选择当前行
+		var ms_ids = []
+		var ms_ips = []
+		if (t_sm.getSelected()) 
+		{
+			var recs = t_sm.getSelections();
+			ms_num = recs.length;
+			for (var i = 0; i < recs.length; i++) 
+			{
+				var record = recs[i];   //获取当前行的记录	
+				var server_id = record.get('server_id');	
+				var control_ip = record.get('controll_ip');	
+				var total_disk_space = parseInt(record.get('total_disk_space'));
+				var free_disk_space = parseInt(record.get('free_disk_space'));
+				var task_number = parseInt(record.get('task_number'));				
+				all_total_disk_space = all_total_disk_space + total_disk_space;
+				all_free_disk_space = all_free_disk_space + free_disk_space;
+				all_task_number = all_task_number + task_number;
+				ms_ids.push(server_id);
+				ms_ips.push(control_ip);
+			}
+		}
+				
+		
+		//避免win的重复生成
+		if(Ext.get("add_hot_tasks_win_" + self.plat)){
+			Ext.getCmp("add_hot_tasks_win_" + self.plat).show();
+			return true;
+		}
+		
+		var add_hot_tasks_form = new Ext.FormPanel({
+			id: 'add_hot_tasks_form',
+			autoWidth: true,//自动调整宽度
+			url:'',
+			frame:true,
+			monitorValid : true,
+			bodyStyle:'padding:5px 5px 0',
+			labelWidth:150,
+			defaults:{xtype:'textfield',width:200},
+			items: [
+				{fieldLabel:'ids', 		name:'ids', 	value: ms_ids, 	hidden:true},
+				{fieldLabel:'ids', 		name:'ids', 	value: ms_ids, 	disabled:true},
+				{fieldLabel:'ips', 		name:'ips', 	value: ms_ips, 	hidden:true},
+				{fieldLabel:'ips', 		name:'ips', 	value: ms_ips, 	disabled:true},
+				{fieldLabel:'ms_num', 	name:'ms_num', 	value: ms_num, 	disabled:true},
+				{fieldLabel:'total_disk_space', name:'total_disk_space', 	value: all_total_disk_space, 	disabled:true},
+				{fieldLabel:'free_disk_space', 	name:'free_disk_space', 	value: all_free_disk_space, 	disabled:true},
+				//{fieldLabel:'suggest_task_number', 	name:'suggest_task_number',	value: suggest_task_number, disabled:false},
+				{fieldLabel:'suggest_task_number',	
+					name: 'suggest_task_number', 
+					value: suggest_task_number, 
+					xtype: 'numberfield',
+					minValue: 0,
+					minText: '建议任务数不能小于0',
+					allowBlank:false,
+					blankText:'建议任务数不能为空'
+				},
+				{fieldLabel:'task_number', 	name:'task_number',	value: all_task_number, disabled:true},				
+				{fieldLabel:'num_dispatching',	
+					name: 'num_dispatching', 
+					value: num_dispatching, 
+					xtype: 'numberfield',
+					minValue: 0,
+					minText: '分发任务数不能小于0',
+					allowBlank:false,
+					blankText:'分发任务数不能为空'
+				},
+				{fieldLabel:'num_deleting', 	name:'num_deleting',	value: num_deleting, disabled:true},				
+				{
+				    xtype:'checkbox',
+				    id: 'start_now',
+				    name: 'start_now',
+				    //align:'left',
+				    fieldLabel:'是否立即执行',
+				    checked: false
+				}	
+			],
+			buttons: [{
+				text: '确定',
+				handler: self.addHotTasksEnd,
+				formBind : true
+			},{
+				text: '取消',
+				handler: function(){Ext.getCmp("add_hot_tasks_win_" + self.plat).close();}
+			}]
+		});
+		
+		var win = new Ext.Window({
+			width:400,height:341,minWidth:200,minHeight:100,
+			autoScroll:'auto',
+			title : "分发热门任务",
+			id : "add_hot_tasks_win_" + self.plat,
+			//renderTo: "ext_room",
+			collapsible: true,
+			modal:false,	//True 表示为当window显示时对其后面的一切内容进行遮罩，false表示为限制对其它UI元素的语法（默认为 false
+			//所谓布局就是指容器组件中子元素的分布，排列组合方式
+			layout: 'form',//layout布局方式为form
+			maximizable:true,
+			minimizable:false,
+			items: add_hot_tasks_form
+		}).show();
+		
+		
+	};
+	
+	this.addHotTasksEnd = function() {
+		Ext.getCmp("add_hot_tasks_form").form.submit({
+			waitMsg : '正在修改......',
+			url : '/ms_add_hot_tasks/' + self.plat + '/',
+			method : 'post',
+			timeout : 5000,//5秒超时, 
+			params : '',
+			success : function(form, action) {
+				var result = Ext.util.JSON.decode(action.response.responseText);
+				Ext.getCmp("add_hot_tasks_win_" + self.plat).close();
+				Ext.MessageBox.alert('成功', result.data);
+				self.room_store.reload();			//重新载入数据，即根据当前页面的条件，刷新用户页面
+			},
+			failure : function(form, action) {
+				alert('失败:' + action.response.responseText);
+				if(typeof(action.response) == 'undefined'){
+					Ext.MessageBox.alert('警告','添加失败，请重新添加！');
+				} else {
+					var result = Ext.util.JSON.decode(action.response.responseText);
+					if(action.failureType == Ext.form.Action.SERVER_INVALID){
+						Ext.MessageBox.alert('警告', result.data);
+					}else{
+						Ext.MessageBox.alert('警告','表单填写异常，请重新填写！');
+					}
+				}
+			}
+		});
+	};
+	
 };
 
 Ms = new msJS();

@@ -14,6 +14,7 @@ import task.views
 import threading
 from ms import *
 import MS.views
+import datetime
                                            
 def room_insert(platform, v_room_id, v_room_name, v_is_valid, v_check_time):
     if(platform == 'mobile'): 
@@ -141,7 +142,7 @@ def show_room_list(request, platform):
     id_list = ids.split(',')
     for room_id in id_list:                         
         ms_list = get_ms_list_in_room(platform, room_id)
-        title = '<h1>id: %s, ms_num: %d</h1>' % (id, len(ms_list))
+        title = '<h1>id: %s, ms_num: %d</h1>' % (room_id, len(ms_list))
         output += title        
         for ms in ms_list:
             output += '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s<br>' \
@@ -329,29 +330,62 @@ def do_delete_cold_tasks(platform, record):
     file_name = 'cold_tasks_%s_%d_%d.log' % (room_id, suggest_task_number, num_deleting)
     log_file = open(file_name, 'w')    
             
-    num = 0
+    real_delete_num = 0
     result = False
     tasks = task.views.get_tasks_local(platform) 
     print 'tasks count: %d' % (tasks.count())
-    #cold_tasks = tasks.filter(cold1__lt=-60.0).order_by('cold1', 'hot')
-    cold_tasks = tasks.filter(cold1__lt=-10.0).order_by('cold1', 'hot')
-    #cold_tasks = tasks.order_by('cold1', 'hot')
+        
+    # rule 1:
+    log_file.write('rule 1 begin')
+    cold_tasks = tasks.filter(cold1__lt=-30.0).order_by('cold1', 'hot')
     print 'cold_tasks count: %d' % (cold_tasks.count())
     for task1 in cold_tasks:
         one_ms = ms_all.find_task(task1.hash)
         if(one_ms != None):
-            #print '%s delete' % (task1.hash)
-            log_file.write('[%f]%s delete from %d, %s\n' % (task1.cold1, task1.hash, one_ms.db_record.server_id, one_ms.db_record.controll_ip))
+            #print '%s delete' % (task1.hash)            
             result = ms_all.delete_cold_task(one_ms, task1.hash)
-            if(result == False):
-                break
-            num += 1
-            if(num >= total_delete_num):
-                break
+            if(result == True):
+                log_file.write('[%s, %d, %f]%s delete from %d, %s\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash, one_ms.db_record.server_id, one_ms.db_record.controll_ip))
+                real_delete_num += 1
+                if(real_delete_num >= total_delete_num):
+                    break
+            else:
+                log_file.write('[%s, %d, %f]%s marked\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash))
         else:
             #print '%s non_exist' % (task1.hash)
-            log_file.write('[%f]%s non_exist\n' % (task1.cold1, task1.hash))
-
+            log_file.write('[%s, %d, %f]%s non_exist\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash))
+    log_file.write('rule 1 end')
+        
+    # rule 2:    
+    if(real_delete_num < total_delete_num):
+        log_file.write('rule 2 begin')
+        now = datetime.datetime.now()
+        day_delta = 30
+        days_ago = now - datetime.timedelta(days=day_delta)
+        time_limit = '%04d-%02d-%02d 00:00:00+00:00' % (days_ago.year, days_ago.month, days_ago.day)
+        cold_tasks = tasks.filter(online_time__lt=time_limit).order_by('hot')
+        print 'cold_tasks count: %d' % (cold_tasks.count())
+        cold_tasks2 = cold_tasks.filter(hot__lt=300)
+        #cold_tasks2 = cold_tasks
+        print 'cold_tasks2 count: %d' % (cold_tasks2.count())
+        #for task1 in cold_tasks:
+        for task1 in cold_tasks2:
+            one_ms = ms_all.find_task(task1.hash)
+            if(one_ms != None):
+                #print '%s delete' % (task1.hash)                
+                result = ms_all.delete_cold_task(one_ms, task1.hash)
+                if(result == True):
+                    log_file.write('[%s, %d, %f]%s delete from %d, %s\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash, one_ms.db_record.server_id, one_ms.db_record.controll_ip))                    
+                    real_delete_num += 1
+                    if(real_delete_num >= total_delete_num):
+                        break
+                else:
+                    log_file.write('[%s, %d, %f]%s delete from %d, %s\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash, one_ms.db_record.server_id, one_ms.db_record.controll_ip))
+            else:
+                #print '%s non_exist' % (task1.hash)
+                log_file.write('[%s, %d, %f]%s non_exist\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash))
+        log_file.write('rule 2 end')
+        
     log_file.close()
     
     ms_all.do_delete()
@@ -364,7 +398,7 @@ def do_delete_cold_tasks(platform, record):
     output += 'num_deleting: %d, ' % (num_deleting)
     output += 'ms num: %d, ' % (len(ms_list))
     output += 'ms tasks num: %d, ' % (ms_tasks_num)
-    output += 'total_delete_num: %d, ' % (total_delete_num)
+    output += 'total_delete_num: %d, real_delete_num: %d' % (total_delete_num, real_delete_num)
     print output
     record.end_time = end_time
     record.status = 2        

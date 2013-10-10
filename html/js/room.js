@@ -49,7 +49,7 @@ var roomJS = function(){
 			{header : 'is_valid', id : 'is_valid', dataIndex : 'is_valid', sortable : true},
 			{header : 'ms_number', id : 'ms_number', dataIndex : 'ms_number', sortable : true},
 			{header : 'task_number', id : 'task_number', dataIndex : 'task_number', sortable : true},
-			{header : 'total_disk_space', id : 'total_disk_space', dataIndex : 'total_disk_space', sortable : true},
+			{header : 'total_disk_space', id : 'total_disk_space', dataIndex : 'total_disk_space', sortable : true, renderer : disk_size},
 			{header : 'free_disk_space', id : 'free_disk_space', dataIndex : 'free_disk_space', sortable : true, renderer : disk_status},
 			{header : 'suggest_task_number', id : 'suggest_task_number', dataIndex : 'suggest_task_number', sortable : true},
 			{header : 'num_dispatching', id : 'num_dispatching', dataIndex : 'num_dispatching', sortable : true},
@@ -126,7 +126,20 @@ var roomJS = function(){
 		main_panel.add(self.room_grid);
 		main_panel.setActiveTab(self.room_grid);
 		
-		function disk_status(value,metadata,record)
+		function disk_size(value)
+		{
+			var i = 0;
+			var n = 3;
+			var iec = Array("B","KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB");
+			while ((value/1024)>1)
+			{
+				value=value/1024;
+				i++;
+			}
+			return (Math.round(value)+iec[i+n]);
+		}
+		
+		function disk_status(value, metadata, record)
 		{
 	 		//var task_number = record.get('task_number');
 	 		//var total_task_num = record.get('total_task_num');
@@ -135,8 +148,17 @@ var roomJS = function(){
 	 		if(value < 2000) 
 			{
 				metadata.css = 'bgred';
-			}			
-			return value; 
+			}	
+			
+			var i = 0;
+			var n = 3;
+			var iec = Array("B","KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB");			
+			while ((value/1024)>1){
+				value=value/1024;
+				i++;
+			}
+			//return value; 
+			return (Math.round(value)+iec[i+n]);					
 		}
 		
 		//生成顶部工具条

@@ -5,18 +5,14 @@ import urllib2
 import hashlib
 
 class MS_INFO:
-    #platform = ''
-    #db_record = None
-    #task_list = []
-    #task_dict = {}
-    #change_list = []
     
     def __init__(self, v_platform, v_db_record):        
         self.platform = ''
         self.db_record = None
         #self.task_list = []
         self.task_dict = {}
-        self.change_list = []
+        self.add_list = []
+        self.delete_dict = {}
     
         self.platform = v_platform
         self.db_record = v_db_record
@@ -117,17 +113,20 @@ class MS_ALL:
                 print '%d: %s is_dispatched is %d' % (index, str(the_ms.db_record.controll_ip), the_ms.db_record.is_dispatch)
         if(the_ms == None):
             return None
-        the_ms.change_list.append(task_hash)
+        the_ms.add_list.append(task_hash)
         self.round_robin_index = ms_index + 1
         if(self.round_robin_index >= len(self.ms_list)):
                 self.round_robin_index = self.round_robin_index % len(self.ms_list)
         return the_ms
         
     
-    def delete_cold_task(self, one_ms, task_hash): 
-        one_ms.change_list.append(task_hash)
-        print '%d, %s delete task %s' % (one_ms.db_record.server_id, one_ms.db_record.controll_ip, task_hash)            
-        return True
+    def delete_cold_task(self, one_ms, task_hash):
+        if task_hash in one_ms.delete_dict:
+            return False
+        else:
+            #print '%d, %s delete task %s' % (one_ms.db_record.server_id, one_ms.db_record.controll_ip, task_hash)
+            one_ms.delete_dict[task_hash] = '1'
+            return True
     
     
     '''
@@ -188,7 +187,7 @@ class MS_ALL:
     def dispatch_to_ms(self, one):
         num = 0
         batch_list = []
-        for task_hash in one.change_list:
+        for task_hash in one.add_list:
             batch_list.append(task_hash)
             num += 1 
             if(num>=self.BATCH_NUM):
@@ -266,7 +265,7 @@ class MS_ALL:
     def delete_from_ms(self, one):
         num = 0
         batch_list = []
-        for task_hash in one.change_list:
+        for (task_hash, value) in one.delete_dict.items():
             batch_list.append(task_hash)
             num += 1 
             if(num>=self.BATCH_NUM):

@@ -21,21 +21,23 @@ def day_diff(date1, date2):
     return (d1-d2).days
 
 
-def task_insert(platform, hash_id, v_online_time, v_is_valid, v_hot, v_cold1, v_cold2, v_cold3, v_last_hit_time, v_total_hits_num):
+def task_insert(platform, hash_id, v_filesize, v_online_time, v_is_valid, v_hot, v_cold1, v_cold2, v_cold3, v_last_hit_time, v_total_hits_num):
     if(platform == 'mobile'):
-        hash_local = models.mobile_task(hash      = hash_id,                  \
-                                       online_time        = v_online_time,    \
-                                       is_valid           = v_is_valid,       \
-                                       hot                = v_hot,            \
-                                       cold1              = v_cold1,          \
-                                       cold2              = v_cold2,          \
-                                       cold3              = v_cold3,          \
-                                       last_hit_time      = v_last_hit_time,  \
-                                       total_hits_num     = v_total_hits_num  \
-                                       ) 
+        hash_local = models.mobile_task(hash      = hash_id,                   \
+                                        filesize = v_filesize,                 \
+                                        online_time        = v_online_time,    \
+                                        is_valid           = v_is_valid,       \
+                                        hot                = v_hot,            \
+                                        cold1              = v_cold1,          \
+                                        cold2              = v_cold2,          \
+                                        cold3              = v_cold3,          \
+                                        last_hit_time      = v_last_hit_time,  \
+                                        total_hits_num     = v_total_hits_num  \
+                                        ) 
         hash_local.save()
     elif(platform == 'pc'):
         hash_local = models.pc_task(hash      = hash_id,                  \
+                                       filesize = v_filesize,                 \
                                        online_time        = v_online_time,    \
                                        is_valid           = v_is_valid,       \
                                        hot                = v_hot,            \
@@ -146,7 +148,7 @@ def down_cold_tasks(request, platform):
         
     tasks = get_tasks_local(platform)  
     #tasks2 = tasks.order_by('cold1,cold2,cold3')
-    tasks2 = tasks.order_by('cold1')[0:task_num]
+    tasks2 = tasks.order_by('cold1', 'hot')[0:task_num]
        
     output = ''
     for task in tasks2:
@@ -157,8 +159,8 @@ def down_cold_tasks(request, platform):
     return response
 
 
-def get_tasks_macross(platform, begin_date, end_date):
-    ms_list = []
+def get_tasks_macross_mobile(begin_date, end_date):
+    task_list = []
     sql = ""
     
     #reload(sys)
@@ -173,31 +175,99 @@ def get_tasks_macross(platform, begin_date, end_date):
     
     db = DB.db.DB_MYSQL()
     db.connect(DB.db.DB_CONFIG.host, DB.db.DB_CONFIG.port, DB.db.DB_CONFIG.user, DB.db.DB_CONFIG.password, DB.db.DB_CONFIG.db)
-    if(platform == 'mobile'):
-        #sql = "select dat_hash, create_time, filesize from fs_mobile_dat where state!='dismissed' " + where_condition
-        sql = "select dat_hash, create_time from fs_mobile_dat where state!='dismissed' " + where_condition
-    elif(platform == 'pc'):        
-        #sql = "select t.task_hash, t.create_time, d.file_size from fs_task t, fs_dat_file d where t.task_hash=d.hashid and t.state!='dismissed' " + where_condition
-        sql = "select task_hash, create_time from fs_task where state!='dismissed' " + where_condition   
+    
+    #sql = "select dat_hash, create_time from fs_mobile_dat where state!='dismissed' " + where_condition
+    sql = "select dat_hash, create_time, filesize from fs_mobile_dat where state!='dismissed' " + where_condition           
     print sql
     db.execute(sql)
     
     for row in db.cur.fetchall():
-        ms = {}      
+        task1 = {}      
         col_num = 0  
         for r in row:
             if(col_num == 0):
-                ms['hash'] = r
+                task1['hash'] = r
             elif(col_num == 1):
-                ms['online_time'] = r
+                task1['online_time'] = r
             elif(col_num == 2):
-                ms['filesize'] = r
+                task1['filesize'] = r
             col_num += 1
-        ms_list.append(ms)
+        task_list.append(task1)
+    print 'task_list num: %d' % (len(task_list))
+    
+    sql = "select video_hash, create_time, filesize from fs_video_dat where state!='dismissed' " + where_condition           
+    print sql
+    db.execute(sql)
+    
+    for row in db.cur.fetchall():
+        task1 = {}      
+        col_num = 0  
+        for r in row:
+            if(col_num == 0):
+                task1['hash'] = r
+            elif(col_num == 1):
+                task1['online_time'] = r
+            elif(col_num == 2):
+                task1['filesize'] = r
+            col_num += 1
+        task_list.append(task1)
+    print 'task_list num: %d' % (len(task_list))
     
     db.close()  
      
-    return ms_list
+    return task_list
+
+
+def get_tasks_macross_pc(begin_date, end_date):
+    task_list = []
+    sql = ""
+    
+    #reload(sys)
+    #sys.setdefaultencoding('utf8')
+    where_condition = ''
+    if(len(begin_date) > 0):
+        begin_time = '%s-%s-%s 00:00:00' % (begin_date[0:4], begin_date[4:6], begin_date[6:8])
+        where_condition += " and create_time >= '%s'" % (begin_time)
+    if(len(end_date) > 0):
+        end_time = '%s-%s-%s 00:00:00' % (end_date[0:4], end_date[4:6], end_date[6:8])
+        where_condition += " and create_time < '%s'" % (end_time)
+    
+    db = DB.db.DB_MYSQL()
+    db.connect(DB.db.DB_CONFIG.host, DB.db.DB_CONFIG.port, DB.db.DB_CONFIG.user, DB.db.DB_CONFIG.password, DB.db.DB_CONFIG.db)
+    
+    #sql = "select task_hash, create_time from fs_task where state!='dismissed' " + where_condition
+    sql = "select t.task_hash, t.create_time, d.file_size from fs_task t, fs_dat_file d where t.task_hash=d.hashid and t.state!='dismissed' " + where_condition       
+    print sql
+    db.execute(sql)
+    
+    for row in db.cur.fetchall():
+        task1 = {}      
+        col_num = 0  
+        for r in row:
+            if(col_num == 0):
+                task1['hash'] = r
+            elif(col_num == 1):
+                task1['online_time'] = r
+            elif(col_num == 2):
+                task1['filesize'] = r
+            col_num += 1
+        task_list.append(task1)
+    
+    db.close()  
+     
+    return task_list
+
+
+
+def get_tasks_macross(platform, begin_date, end_date):
+    task_list = None
+    if(platform == 'mobile'):
+        task_list = get_tasks_macross_mobile(begin_date, end_date)
+    elif(platform == 'pc'):        
+        task_list = get_tasks_macross_pc(begin_date, end_date)
+        
+    return task_list
+
 
 
 def task_list_find(task_list, hashid):
@@ -364,7 +434,8 @@ def upload_add_hits_num(platform, hits_date):
             else:
                 print '%s, %s [insert +]' % (hits_num, hash_id)
                 v_hits_num = string.atoi(hits_num)
-                task_insert(platform, hash_id, '2000-01-01T00:00:00+00:00', 1, v_hits_num, 0.0, 0.0, 0.0, hits_time, v_hits_num)
+                #task_insert(platform, hash_id, '2000-01-01T00:00:00+00:00', 1, v_hits_num, 0.0, 0.0, 0.0, hits_time, v_hits_num)
+                task_insert(platform, hash_id, 0, hits_time, 1, v_hits_num, 0.0, 0.0, 0.0, hits_time, v_hits_num)
                 num_insert += 1
         line_num += 1
         if(line_num % 100 == 0):
@@ -504,13 +575,14 @@ def do_sync_all(platform, record):
     
     for hash_macross in hash_list_macross:        
         create_time = '%s+00:00' % (hash_macross['online_time'])
+        filesize = string.atol(hash_macross['filesize'])
         print '%s, %s' % (hash_macross['hash'], create_time)
         #hash_local = task_list_find(hash_list_local, hash_macross['hash'])
         hash_list = hash_list_local.filter(hash=hash_macross['hash'])
         #print 'insert before %d' % (len(hash_list)) 
         if(len(hash_list) <= 0):
             print 'insert'
-            task_insert(platform, hash_macross['hash'], create_time, 2, 0, 0.0, 0.0, 0.0, create_time, 0)   
+            task_insert(platform, hash_macross['hash'], filesize, create_time, 2, 0, 0.0, 0.0, 0.0, create_time, 0)   
             #hash_list2 = hash_list_local.filter(hash=hash_macross['hash'])
             #print 'insert after %d' % (len(hash_list2))            
             num_insert += 1    
@@ -523,6 +595,7 @@ def do_sync_all(platform, record):
             #else:
             #    print 'update, do nothing'  
             hash_list[0].online_time = create_time
+            hash_list[0].filesize = filesize
             hash_list[0].is_valid = 2
             hash_list[0].save()       
             num_update += 1
@@ -584,13 +657,14 @@ def do_sync_partial(platform, record):
     
     for hash_macross in hash_list_macross:        
         create_time = '%s+00:00' % (hash_macross['online_time'])
+        filesize = string.atol(hash_macross['filesize'])
         print '%s, %s' % (hash_macross['hash'], create_time)
         #hash_local = task_list_find(hash_list_local, hash_macross['hash'])
         hash_list = hash_list_local.filter(hash=hash_macross['hash'])
         #print 'insert before %d' % (len(hash_list)) 
         if(len(hash_list) <= 0):
             print 'insert'
-            task_insert(platform, hash_macross['hash'], create_time, 1, 0, 0.0, 0.0, 0.0, create_time, 0)   
+            task_insert(platform, hash_macross['hash'], filesize, create_time, 1, 0, 0.0, 0.0, 0.0, create_time, 0)   
             #hash_list2 = hash_list_local.filter(hash=hash_macross['hash'])
             #print 'insert after %d' % (len(hash_list2))            
             num_insert += 1    
@@ -603,6 +677,7 @@ def do_sync_partial(platform, record):
             #else:
             #    print 'update, do nothing'  
             hash_list[0].online_time = create_time
+            hash_list[0].filesize = filesize
             hash_list[0].is_valid = 1
             hash_list[0].save()       
             num_update += 1
