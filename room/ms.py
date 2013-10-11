@@ -20,19 +20,37 @@ class MS_INFO:
         
         
 class MS_ALL:
-    MACROSS_IP = '192.168.160.128'
-    MACROSS_PORT = 80
-    #MACROSS_IP = 'macross.funshion.com'
-    #MACROSS_PORT = 27777
+    #MACROSS_IP = '192.168.160.128'
+    #MACROSS_PORT = 80
+    MACROSS_IP = 'macross.funshion.com'
+    MACROSS_PORT = 27777
     BATCH_NUM = 2000
     
-    def __init__(self, v_platform, v_ms_list):
+    def __init__(self, v_platform, v_ms_list, v_ms_id_list = None):
         self.ms_list = []
+        self.ms_list_allowed_add = []
+        self.ms_list_allowed_delete = []
+        self.ms_id_list = []
         self.round_robin_index = 0
         
         for ms in v_ms_list:
             ms_info = MS_INFO(v_platform, ms)
             self.ms_list.append(ms_info)
+            
+        if(v_ms_id_list != None):
+            for ms_id in v_ms_id_list:
+                self.ms_id_list.append(ms_id)
+                #find_availiable_ms(ms_id)
+                for ms_info in self.ms_list:
+                    if(ms_info.db_record.server_id == ms_id):
+                        self.ms_list_allowed_delete.append(ms_info)
+                        if(ms_info.db_record.is_dispatch == 1):
+                            self.ms_list_allowed_add.append(ms_info)
+        else:
+            for ms_info in self.ms_list:
+                self.ms_list_allowed_delete.append(ms_info)
+                if(ms_info.db_record.is_dispatch == 1):
+                    self.ms_list_allowed_add.append(ms_info)
             
             
     def get_tasks(self):
@@ -99,28 +117,27 @@ class MS_ALL:
             
         
     def dispatch_hot_task(self, task_hash):   
-        # find_availiable_ms 
-        the_ms = None
-        ms_index = 0    
-        for index in range(0, len(self.ms_list)):
-            ms_index = self.round_robin_index + index
-            if(ms_index >= len(self.ms_list)):
-                ms_index = ms_index % len(self.ms_list)
-            the_ms = self.ms_list[ms_index]
-            if(the_ms.db_record.is_dispatch == 1):
-                break
-            else:
-                print '%d: %s is_dispatched is %d' % (index, str(the_ms.db_record.controll_ip), the_ms.db_record.is_dispatch)
-        if(the_ms == None):
+        if(len(self.ms_list_allowed_add) == 0):
             return None
-        the_ms.add_list.append(task_hash)
-        self.round_robin_index = ms_index + 1
-        if(self.round_robin_index >= len(self.ms_list)):
-                self.round_robin_index = self.round_robin_index % len(self.ms_list)
-        return the_ms
+        ms_info = self.ms_list_allowed_add[self.round_robin_index]            
+        ms_info.add_list.append(task_hash)
+        self.round_robin_index = self.round_robin_index + 1
+        if(self.round_robin_index >= len(self.ms_list_allowed_add)):
+                self.round_robin_index = self.round_robin_index % len(self.ms_list_allowed_add)
+        return ms_info
         
     
+    def ms_is_allowed_delete(self, one_ms):
+        for ms_info in self.ms_list_allowed_delete:
+            if(ms_info.db_record.server_id == one_ms.db_record.server_id):
+                return True
+        return False
+    
+        
     def delete_cold_task(self, one_ms, task_hash):
+        if(self.ms_is_allowed_delete(one_ms) == False):
+            return False
+        
         if task_hash in one_ms.delete_dict:
             return False
         else:
@@ -202,7 +219,7 @@ class MS_ALL:
         
     
     def do_dispatch(self):        
-        for one in self.ms_list:
+        for one in self.ms_list_allowed_add:
             self.dispatch_to_ms(one)
         return True
     
@@ -280,7 +297,7 @@ class MS_ALL:
     
     
     def do_delete(self):        
-        for one in self.ms_list:
+        for one in self.ms_list_allowed_delete:
             self.delete_from_ms(one)
         return True
     

@@ -227,16 +227,18 @@ def get_tasks_macross_pc(begin_date, end_date):
     where_condition = ''
     if(len(begin_date) > 0):
         begin_time = '%s-%s-%s 00:00:00' % (begin_date[0:4], begin_date[4:6], begin_date[6:8])
-        where_condition += " and create_time >= '%s'" % (begin_time)
+        where_condition += " and fs_task.create_time >= '%s'" % (begin_time)
     if(len(end_date) > 0):
         end_time = '%s-%s-%s 00:00:00' % (end_date[0:4], end_date[4:6], end_date[6:8])
-        where_condition += " and create_time < '%s'" % (end_time)
+        where_condition += " and fs_task.create_time < '%s'" % (end_time)
     
     db = DB.db.DB_MYSQL()
     db.connect(DB.db.DB_CONFIG.host, DB.db.DB_CONFIG.port, DB.db.DB_CONFIG.user, DB.db.DB_CONFIG.password, DB.db.DB_CONFIG.db)
     
+    #where_condition = " and fs_task.task_hash='92A20D164F8D5F18F2433E9CB39703E2A381EDDC'"
     #sql = "select task_hash, create_time from fs_task where state!='dismissed' " + where_condition
-    sql = "select t.task_hash, t.create_time, d.file_size from fs_task t, fs_dat_file d where t.task_hash=d.hashid and t.state!='dismissed' " + where_condition       
+    #sql = "select t.task_hash, t.create_time, d.file_size from fs_task t, fs_dat_file d where t.task_hash=d.hashid and t.state!='dismissed' " + where_condition
+    sql = "select fs_task.task_hash, fs_task.create_time, fs_dat_file.file_size from fs_task LEFT JOIN fs_dat_file ON fs_task.task_hash=fs_dat_file.hashid where fs_task.state!='dismissed'" + where_condition              
     print sql
     db.execute(sql)
     
@@ -388,7 +390,7 @@ def upload_add_hits_num(platform, hits_date):
     if(platform == 'mobile'):        
         upload_file = DB.db.HITS_FILE.template_mobile % (hits_date)
     elif(platform == 'pc'):
-        upload_file = DB.db.HITS_FILE.template_mobile % (hits_date)
+        upload_file = DB.db.HITS_FILE.template_pc % (hits_date)
     print 'add_hits_num %s' % (upload_file)
        
     hits_time = '%s-%s-%s 12:00:00+00:00' % (hits_date[0:4], hits_date[4:6], hits_date[6:8])  
@@ -574,8 +576,8 @@ def do_sync_all(platform, record):
     #        hash_local.is_valid = 0
     
     for hash_macross in hash_list_macross:        
-        create_time = '%s+00:00' % (hash_macross['online_time'])
-        filesize = string.atol(hash_macross['filesize'])
+        create_time = '%s+00:00' % (hash_macross['online_time'])        
+        filesize = hash_macross['filesize']
         print '%s, %s' % (hash_macross['hash'], create_time)
         #hash_local = task_list_find(hash_list_local, hash_macross['hash'])
         hash_list = hash_list_local.filter(hash=hash_macross['hash'])
@@ -657,7 +659,7 @@ def do_sync_partial(platform, record):
     
     for hash_macross in hash_list_macross:        
         create_time = '%s+00:00' % (hash_macross['online_time'])
-        filesize = string.atol(hash_macross['filesize'])
+        filesize = hash_macross['filesize']
         print '%s, %s' % (hash_macross['hash'], create_time)
         #hash_local = task_list_find(hash_list_local, hash_macross['hash'])
         hash_list = hash_list_local.filter(hash=hash_macross['hash'])

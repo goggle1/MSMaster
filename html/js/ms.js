@@ -150,8 +150,8 @@ var msJS = function(){
 		
 		function dispatch_status(value) {
 			switch(value) {
-				case "0": return '<span class="red">0:不可调度</span>'; break;
-				case "1": return '<span class="green">1:可调度</span>'; break;
+				case "0": return '<span class="red">0:不可分发</span>'; break;
+				case "1": return '<span class="green">1:可分发</span>'; break;
 				default:
 					return '<span class="grey">' + value  + '</span>';
 			}
@@ -159,8 +159,8 @@ var msJS = function(){
 		
 		function pause_status(value) {
 			switch(value) {
-				case "0": return '<span class="green">0:可分发</span>'; break;
-				case "1": return '<span class="red">1:不可分发</span>'; break;
+				case "0": return '<span class="green">0:可调度</span>'; break;
+				case "1": return '<span class="red">1:不可调度</span>'; break;
 				default:
 					return '<span class="red">' + value  + '</span>';
 			}
@@ -594,15 +594,17 @@ var msJS = function(){
 			return false;
 		}	
 		
-		
-		var suggest_task_number = 0;		
-		var num_dispatching = 0;
-		var num_deleting = 0;	
+		var room_id = 0;			
+		var room_num = 0;
 		
 		var ms_num = 0;
 		var all_total_disk_space = 0;
 		var all_free_disk_space = 0;
 		var all_task_number = 0;
+		
+		var suggest_task_number = 0;		
+		var num_dispatching = 0;
+		var num_deleting = 0;	
 		//此处为多选行，如果没有选中任意一行时，需要对右键当前行进行选中设置
 		//如果右键当前行不在选中的行中，则移除所选的行，选择当前行
 		var ms_ids = []
@@ -614,11 +616,18 @@ var msJS = function(){
 			for (var i = 0; i < recs.length; i++) 
 			{
 				var record = recs[i];   //获取当前行的记录	
+				var ms_room_id = record.get('room_id');					
 				var server_id = record.get('server_id');	
 				var control_ip = record.get('controll_ip');	
 				var total_disk_space = parseInt(record.get('total_disk_space'));
 				var free_disk_space = parseInt(record.get('free_disk_space'));
-				var task_number = parseInt(record.get('task_number'));				
+				var task_number = parseInt(record.get('task_number'));	
+				
+				if(ms_room_id != room_id)
+				{
+					room_id = ms_room_id;
+					room_num ++;					
+				}			
 				all_total_disk_space = all_total_disk_space + total_disk_space;
 				all_free_disk_space = all_free_disk_space + free_disk_space;
 				all_task_number = all_task_number + task_number;
@@ -626,6 +635,12 @@ var msJS = function(){
 				ms_ips.push(control_ip);
 			}
 		}
+		
+		if(room_num > 1)
+		{
+			Ext.MessageBox.alert('提示','只能选择同一机房的MS');
+			return false;
+		}	
 				
 		
 		//避免win的重复生成
@@ -644,11 +659,11 @@ var msJS = function(){
 			labelWidth:150,
 			defaults:{xtype:'textfield',width:200},
 			items: [
-				{fieldLabel:'ids', 		name:'ids', 	value: ms_ids, 	hidden:true},
-				{fieldLabel:'ids', 		name:'ids', 	value: ms_ids, 	disabled:true},
-				{fieldLabel:'ips', 		name:'ips', 	value: ms_ips, 	hidden:true},
-				{fieldLabel:'ips', 		name:'ips', 	value: ms_ips, 	disabled:true},
+				{fieldLabel:'room_id', 		name:'room_id', 	value: room_id, 	hidden:true},
+				{fieldLabel:'room_id', 		name:'room_id', 	value: room_id, 	disabled:true},
 				{fieldLabel:'ms_num', 	name:'ms_num', 	value: ms_num, 	disabled:true},
+				{fieldLabel:'ids', 		name:'ids', 	value: ms_ids, 	hidden:true},
+				{fieldLabel:'ids', 		name:'ids', 	value: ms_ids, 	disabled:true},				
 				{fieldLabel:'total_disk_space', name:'total_disk_space', 	value: all_total_disk_space, 	disabled:true},
 				{fieldLabel:'free_disk_space', 	name:'free_disk_space', 	value: all_free_disk_space, 	disabled:true},
 				//{fieldLabel:'suggest_task_number', 	name:'suggest_task_number',	value: suggest_task_number, disabled:false},
@@ -719,6 +734,174 @@ var msJS = function(){
 			success : function(form, action) {
 				var result = Ext.util.JSON.decode(action.response.responseText);
 				Ext.getCmp("add_hot_tasks_win_" + self.plat).close();
+				Ext.MessageBox.alert('成功', result.data);
+				self.room_store.reload();			//重新载入数据，即根据当前页面的条件，刷新用户页面
+			},
+			failure : function(form, action) {
+				alert('失败:' + action.response.responseText);
+				if(typeof(action.response) == 'undefined'){
+					Ext.MessageBox.alert('警告','添加失败，请重新添加！');
+				} else {
+					var result = Ext.util.JSON.decode(action.response.responseText);
+					if(action.failureType == Ext.form.Action.SERVER_INVALID){
+						Ext.MessageBox.alert('警告', result.data);
+					}else{
+						Ext.MessageBox.alert('警告','表单填写异常，请重新填写！');
+					}
+				}
+			}
+		});
+	};
+	
+	this.delete_cold_tasks = function(){
+		var grid = self.server_grid;
+		var t_sm = grid.getSelectionModel();
+
+		if(!t_sm.getSelected()){
+			Ext.MessageBox.alert('提示','未选中记录');
+			return false;
+		}	
+		
+		var room_id = 0;			
+		var room_num = 0;
+		
+		var ms_num = 0;
+		var all_total_disk_space = 0;
+		var all_free_disk_space = 0;
+		var all_task_number = 0;
+		
+		var suggest_task_number = 0;		
+		var num_dispatching = 0;
+		var num_deleting = 0;	
+		//此处为多选行，如果没有选中任意一行时，需要对右键当前行进行选中设置
+		//如果右键当前行不在选中的行中，则移除所选的行，选择当前行
+		var ms_ids = []
+		var ms_ips = []
+		if (t_sm.getSelected()) 
+		{
+			var recs = t_sm.getSelections();
+			ms_num = recs.length;
+			for (var i = 0; i < recs.length; i++) 
+			{
+				var record = recs[i];   //获取当前行的记录	
+				var ms_room_id = record.get('room_id');					
+				var server_id = record.get('server_id');	
+				var control_ip = record.get('controll_ip');	
+				var total_disk_space = parseInt(record.get('total_disk_space'));
+				var free_disk_space = parseInt(record.get('free_disk_space'));
+				var task_number = parseInt(record.get('task_number'));	
+				
+				if(ms_room_id != room_id)
+				{
+					room_id = ms_room_id;
+					room_num ++;					
+				}			
+				all_total_disk_space = all_total_disk_space + total_disk_space;
+				all_free_disk_space = all_free_disk_space + free_disk_space;
+				all_task_number = all_task_number + task_number;
+				ms_ids.push(server_id);
+				ms_ips.push(control_ip);
+			}
+		}
+		
+		if(room_num > 1)
+		{
+			Ext.MessageBox.alert('提示','只能选择同一机房的MS');
+			return false;
+		}	
+				
+		
+		//避免win的重复生成
+		if(Ext.get("delete_cold_tasks_win_" + self.plat)){
+			Ext.getCmp("delete_cold_tasks_win_" + self.plat).show();
+			return true;
+		}
+		
+		var delete_cold_tasks_form = new Ext.FormPanel({
+			id: 'delete_cold_tasks_form',
+			autoWidth: true,//自动调整宽度
+			url:'',
+			frame:true,
+			monitorValid : true,
+			bodyStyle:'padding:5px 5px 0',
+			labelWidth:150,
+			defaults:{xtype:'textfield',width:200},
+			items: [
+				{fieldLabel:'room_id', 		name:'room_id', 	value: room_id, 	hidden:true},
+				{fieldLabel:'room_id', 		name:'room_id', 	value: room_id, 	disabled:true},
+				{fieldLabel:'ms_num', 	name:'ms_num', 	value: ms_num, 	disabled:true},
+				{fieldLabel:'ids', 		name:'ids', 	value: ms_ids, 	hidden:true},
+				{fieldLabel:'ids', 		name:'ids', 	value: ms_ids, 	disabled:true},				
+				{fieldLabel:'total_disk_space', name:'total_disk_space', 	value: all_total_disk_space, 	disabled:true},
+				{fieldLabel:'free_disk_space', 	name:'free_disk_space', 	value: all_free_disk_space, 	disabled:true},
+				//{fieldLabel:'suggest_task_number', 	name:'suggest_task_number',	value: suggest_task_number, disabled:false},
+				{fieldLabel:'suggest_task_number',	
+					name: 'suggest_task_number', 
+					value: suggest_task_number, 
+					xtype: 'numberfield',
+					minValue: 0,
+					minText: '建议任务数不能小于0',
+					allowBlank:false,
+					blankText:'建议任务数不能为空'
+				},
+				{fieldLabel:'task_number', 	name:'task_number',	value: all_task_number, disabled:true},	
+				{fieldLabel:'num_dispatching', 	name:'num_dispatching',	value: num_dispatching, disabled:true},		
+				{fieldLabel:'num_deleting',	
+					name: 'num_deleting', 
+					value: num_deleting, 
+					xtype: 'numberfield',
+					minValue: 0,
+					minText: '删除任务数不能小于0',
+					allowBlank:false,
+					blankText:'删除任务数不能为空'
+				},								
+				{
+				    xtype:'checkbox',
+				    id: 'start_now',
+				    name: 'start_now',
+				    //align:'left',
+				    fieldLabel:'是否立即执行',
+				    checked: false
+				}	
+			],
+			buttons: [{
+				text: '确定',
+				handler: self.deleteColdTasksEnd,
+				formBind : true
+			},{
+				text: '取消',
+				handler: function(){Ext.getCmp("delete_cold_tasks_win_" + self.plat).close();}
+			}]
+		});
+		
+		var win = new Ext.Window({
+			width:400,height:341,minWidth:200,minHeight:100,
+			autoScroll:'auto',
+			title : "删除冷门任务",
+			id : "delete_cold_tasks_win_" + self.plat,
+			//renderTo: "ext_room",
+			collapsible: true,
+			modal:false,	//True 表示为当window显示时对其后面的一切内容进行遮罩，false表示为限制对其它UI元素的语法（默认为 false
+			//所谓布局就是指容器组件中子元素的分布，排列组合方式
+			layout: 'form',//layout布局方式为form
+			maximizable:true,
+			minimizable:false,
+			items: delete_cold_tasks_form
+		}).show();
+		
+		
+	};
+	
+	this.deleteColdTasksEnd = function() {
+		Ext.getCmp("delete_cold_tasks_form").form.submit({
+			waitMsg : '正在修改......',
+			url : '/ms_delete_cold_tasks/' + self.plat + '/',
+			method : 'post',
+			timeout : 5000,//5秒超时, 
+			params : '',
+			success : function(form, action) {
+				var result = Ext.util.JSON.decode(action.response.responseText);
+				Ext.getCmp("delete_cold_tasks_win_" + self.plat).close();
 				Ext.MessageBox.alert('成功', result.data);
 				self.room_store.reload();			//重新载入数据，即根据当前页面的条件，刷新用户页面
 			},

@@ -598,7 +598,7 @@ def sync_room_db(request, platform):
         return HttpResponse(json.dumps(return_datas)) 
         
     output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
-    return_datas['success'] = False
+    return_datas['success'] = True
     return_datas['data'] = output
         
     if(start_now == True):
@@ -772,7 +772,7 @@ def sync_room_status(request, platform):
         return HttpResponse(json.dumps(return_datas)) 
         
     output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)
-    return_datas['success'] = False
+    return_datas['success'] = True
     return_datas['data'] = output
         
     if(start_now == True):

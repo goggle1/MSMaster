@@ -206,7 +206,11 @@ class Thread_JOBS(threading.Thread):
         elif(operation.type == 'delete_cold_tasks'):
             result = room.views.do_delete_cold_tasks(self.platform, operation)  
         elif(operation.type == 'add_hot_tasks'):
-            result = room.views.do_add_hot_tasks(self.platform, operation)      
+            result = room.views.do_add_hot_tasks(self.platform, operation)
+        elif(operation.type == 'ms_delete_cold_tasks'):
+            result = MS.views.ms_do_delete_cold_tasks(self.platform, operation)
+        elif(operation.type == 'ms_add_hot_tasks'):
+            result = MS.views.ms_do_add_hot_tasks(self.platform, operation)      
         else:
             print 'unknown operation type: %s' % (operation.type)
             
