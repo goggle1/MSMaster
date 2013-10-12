@@ -387,20 +387,34 @@ def do_sync_ms_status(platform, record):
     record.status = 1
     record.save()
         
+    ms_ids = record.memo
+    ms_id_list = []
+    fields = ms_ids.split(',')
+    for field in fields:
+        ms_id = string.atoi(field)
+        ms_id_list.append(ms_id)
+         
     ms_list_local = get_ms_local(platform)
     
     num_local = ms_list_local.count()
-    print 'do_sync_ms_status: ms_num=%d' % (num_local)
+    print 'do_sync_ms_status: ms_num=%d, ms_id_num=%d' % (num_local, len(ms_id_list))
     
-    for ms_local in ms_list_local:
-        get_ms_status(ms_local)    
+    if(len(ms_id_list) == 0):
+        for ms_local in ms_list_local:
+            get_ms_status(ms_local)
+    else:
+        for ms_id in ms_id_list:
+            ms_list = ms_list_local.filter(server_id=ms_id) 
+            if(ms_list.count() > 0):
+                one_ms = ms_list[0]
+                get_ms_status(one_ms)   
 
     now_time = time.localtime(time.time())        
     end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
     record.end_time = end_time
     record.status = 2        
     output = 'now: %s, ' % (end_time)
-    output += 'ms num: %d, ' % (num_local)    
+    output += 'ms num: %d, %d' % (num_local, len(ms_id_list))    
     record.memo = output
     record.save()
         
@@ -449,7 +463,8 @@ def ms_do_add_hot_tasks(platform, record):
     print 'ms_list num: %d' % (len(ms_list))            
     
     ms_all = room.ms.MS_ALL(platform, ms_list, ms_id_list)
-    ms_all.get_tasks()
+    #ms_all.get_tasks()
+    ms_all.get_tasks_macross()
     
     ms_tasks_num = ms_all.get_tasks_num()
     total_dispatch_num = num_dispatching
@@ -570,7 +585,8 @@ def ms_do_delete_cold_tasks(platform, record):
     print 'ms_list num: %d' % (len(ms_list))
     
     ms_all = room.ms.MS_ALL(platform, ms_list, ms_id_list)
-    ms_all.get_tasks()
+    #ms_all.get_tasks()
+    ms_all.get_tasks_macross()
     
     ms_tasks_num = ms_all.get_tasks_num()    
     total_delete_num = num_deleting
@@ -788,6 +804,8 @@ def sync_ms_status(request, platform):
         if(request.REQUEST['start_now'] == 'on'):
             start_now = True
     
+    v_ms_ids = request.REQUEST['ids']
+    
     now_time = time.localtime(time.time())
     today = time.strftime("%Y-%m-%d", now_time)
     dispatch_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
@@ -797,7 +815,7 @@ def sync_ms_status(request, platform):
     operation1['name'] = today
     operation1['user'] = request.user.username
     operation1['dispatch_time'] = dispatch_time
-    operation1['memo'] = ''
+    operation1['memo'] = v_ms_ids
     
     return_datas = {}
     output = ''

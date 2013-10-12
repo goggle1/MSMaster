@@ -4,6 +4,8 @@ import urllib
 import urllib2
 import hashlib
 
+import DB.db
+
 class MS_INFO:
     
     def __init__(self, v_platform, v_db_record):        
@@ -32,6 +34,8 @@ class MS_ALL:
         self.ms_list_allowed_delete = []
         self.ms_id_list = []
         self.round_robin_index = 0
+        
+        self.platform = v_platform
         
         for ms in v_ms_list:
             ms_info = MS_INFO(v_platform, ms)
@@ -96,6 +100,31 @@ class MS_ALL:
         return True
     
     
+    def get_tasks_macross(self):               
+        db = DB.db.DB_MYSQL()
+        #db.connect("192.168.8.101", 3317, "public", "funshion", "macross")
+        db.connect(DB.db.DB_CONFIG.host, DB.db.DB_CONFIG.port, DB.db.DB_CONFIG.user, DB.db.DB_CONFIG.password, DB.db.DB_CONFIG.db)        
+        
+        for one in self.ms_list:
+            print '%d, %s get tasks begin' % (one.db_record.server_id, one.db_record.controll_ip)            
+            sql = "" 
+            if(self.platform == 'mobile'):
+                sql = "SELECT dat_hash FROM fs_mobile_dat d, fs_mobile_ms_dat m WHERE d.dat_id = m.dat_id AND m.server_id=%d" % (one.db_record.server_id)
+            elif(self.platform == 'pc'):
+                sql = "SELECT task_hash FROM fs_task t,fs_ms_task m WHERE t.task_id = m.task_id AND m.server_id=%d" % (one.db_record.server_id)    
+            db.execute(sql)        
+            for row in db.cur.fetchall():
+                col_num = 0  
+                for r in row:
+                    if(col_num == 0):
+                        one.task_dict[r] = '1'                
+                    col_num += 1   
+            print '%d, %s get tasks end, task_number=%d' % (one.db_record.server_id, one.db_record.controll_ip, len(one.task_dict)) 
+        db.close()  
+        return True
+            
+            
+            
     def get_tasks_num(self):
         total_num = 0
         for one in self.ms_list:
@@ -189,7 +218,7 @@ class MS_ALL:
         values['sign']      = sign
                 
         url = 'http://%s:%d/api/?cli=ms&cmd=report_hot_task' % (self.MACROSS_IP, self.MACROSS_PORT)
-        print 'num=%d, url=%s' % (num, url)
+        print 'ms_id=%d, ms_ip=%s, task_num=%d, url=%s' % (one.db_record.server_id, one.db_record.controll_ip, num, url)
         
         data = urllib.urlencode(values)
         #print data
@@ -267,7 +296,7 @@ class MS_ALL:
         values['sign']      = sign
                 
         url = 'http://%s:%d/api/?cli=ms&cmd=report_cold_task' % (self.MACROSS_IP, self.MACROSS_PORT)        
-        print 'num=%d, url=%s' % (num, url)
+        print 'ms_id=%d, ms_ip=%s, task_num=%d, url=%s' % (one.db_record.server_id, one.db_record.controll_ip, num, url)
         
         data = urllib.urlencode(values)
         #print data

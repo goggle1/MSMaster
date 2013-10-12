@@ -449,6 +449,21 @@ var msJS = function(){
 	
 	this.sync_ms_status = function() 
 	{
+		var grid = self.server_grid;
+		var t_sm = grid.getSelectionModel();
+
+		//此处为多选行，如果没有选中任意一行时，需要对右键当前行进行选中设置
+		//如果右键当前行不在选中的行中，则移除所选的行，选择当前行
+		var ms_ids = []
+		if (t_sm.getSelected()) 
+		{
+			var recs = t_sm.getSelections();
+			for (var i = 0; i < recs.length; i++) 
+			{
+				ms_ids.push(recs[i].get('server_id'));
+			}
+		}		
+		
 		//避免win的重复生成
 		if(Ext.get("sync_ms_status_win_" + self.plat)){
 			Ext.getCmp("sync_ms_status_win_" + self.plat).show();
@@ -464,7 +479,9 @@ var msJS = function(){
 			bodyStyle:'padding:5px 5px 0',
 			labelWidth:150,
 			defaults:{xtype:'textfield',width:200},
-			items: [									
+			items: [
+				{fieldLabel:'ids(default:all)', 		name:'ids', 	value: ms_ids, 	hidden:true},
+				{fieldLabel:'ids(default:all)', 		name:'ids', 	value: ms_ids, 	disabled:true},										
 				{
 				    xtype:'checkbox',
 				    id: 'start_now',
@@ -485,7 +502,7 @@ var msJS = function(){
 		});
 		
 		var win = new Ext.Window({
-			width:400,height:110,minWidth:200,minHeight:100,
+			width:400,height:135,minWidth:200,minHeight:100,
 			autoScroll:'auto',
 			title : "同步MS状态",
 			id : "sync_ms_status_win_" + self.plat,

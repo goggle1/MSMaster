@@ -331,14 +331,14 @@ var taskJS = function(){
 			defaults:{xtype:'textfield',width:200},
 			items: [				
 				{
-					fieldLabel:'begin_date',	
+					fieldLabel:'begin_date(包含)',	
 					name: 'begin_date', 
 					value: yesterday, 
 					allowBlank: true,
 					blankText: '开始日期可以为空'
 				},
 				{
-					fieldLabel:'end_date',	
+					fieldLabel:'end_date(不包，可空)',	
 					name: 'end_date', 
 					value: '', 
 					allowBlank: true,
@@ -458,14 +458,14 @@ var taskJS = function(){
 			defaults:{xtype:'textfield',width:200},
 			items: [				
 				{
-					fieldLabel:'begin_date',	
+					fieldLabel:'begin_date(包含)',	
 					name: 'begin_date', 
 					value: yesterday, 
 					allowBlank: false,
 					blankText: '开始日期不能为空'
 				},
 				{
-					fieldLabel:'end_date',	
+					fieldLabel:'end_date(不包，可空)',	
 					name: 'end_date', 
 					value: '', 
 					allowBlank: true,

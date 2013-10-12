@@ -779,11 +779,24 @@ def add_record_sync_hash_db(platform, record_list, operation1):
         return False
        
             
-def sync_hash_db(request, platform):
+def sync_hash_db(request, platform):    
     print 'sync_hash_db'  
-    print request.REQUEST
+    print request.REQUEST    
     #{u'start_now': u'on', u'begin_date': u'20130922', u'end_date': u'20130923'}
     #{u'begin_date': u'', u'end_date': u''}
+
+    '''
+    # temporary    
+    import special
+    file_name = '/home/xiongming/20131011.hashid.list'
+    platform = 'pc'
+    special.hot_tasks_to_rooms(platform, file_name)
+    return_datas = {}
+    return_datas['success'] = True
+    return_datas['data'] = file_name
+    return HttpResponse(json.dumps(return_datas)) 
+    '''
+    
     start_now = False
     if 'start_now' in request.REQUEST:
         if(request.REQUEST['start_now'] == 'on'):

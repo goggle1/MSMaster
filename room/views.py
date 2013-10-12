@@ -192,7 +192,8 @@ def do_add_hot_tasks(platform, record):
     print 'ms_list num: %d' % (len(ms_list))            
     
     ms_all = MS_ALL(platform, ms_list)
-    ms_all.get_tasks()
+    #ms_all.get_tasks()
+    ms_all.get_tasks_macross()
     
     ms_tasks_num = ms_all.get_tasks_num()
     total_dispatch_num = num_dispatching
@@ -302,7 +303,8 @@ def do_delete_cold_tasks(platform, record):
     print 'ms_list num: %d' % (len(ms_list))
     
     ms_all = MS_ALL(platform, ms_list)
-    ms_all.get_tasks()
+    #ms_all.get_tasks()
+    ms_all.get_tasks_macross()
     
     ms_tasks_num = ms_all.get_tasks_num()    
     total_delete_num = num_deleting
