@@ -366,4 +366,4 @@ var operationJS = function(){
 	
 };
 
-Operation = new operationJS();
+//Operation = new operationJS();

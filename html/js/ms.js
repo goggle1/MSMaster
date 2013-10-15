@@ -940,4 +940,6 @@ var msJS = function(){
 	
 };
 
-Ms = new msJS();
+//Ms = new msJS();
+ 
+

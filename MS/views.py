@@ -358,6 +358,7 @@ def do_sync_ms_db(platform, record):
             ms_local.is_dispatch        = ms_macross['is_dispatch']
             ms_local.is_dispatch        = ms_macross['is_dispatch']
             ms_local.is_pause           = ms_macross['is_pause']
+            ms_local.check_time         = begin_time
             ms_local.save()
             num_update += 1
                 

@@ -777,7 +777,7 @@ var taskJS = function(){
 	
 };
 
-Task = new taskJS();
+//Task = new taskJS();
 
 var taskinfoJS = function(){
 	var self = this;
@@ -798,4 +798,4 @@ var taskinfoJS = function(){
 	
 };
 
-Taskinfo = new taskinfoJS();
+//Taskinfo = new taskinfoJS();

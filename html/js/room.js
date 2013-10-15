@@ -803,4 +803,4 @@ var roomJS = function(){
 	
 };
 
-Room = new roomJS();
+//Room = new roomJS();
