@@ -165,7 +165,12 @@ var roomJS = function(){
 		function createTbar(){
 			var listener = {specialkey:function(field, e){if(e.getKey()==Ext.EventObject.ENTER){query_room();}}};
 			var oneTbar = new Ext.Toolbar({
-				items:['room_name: ',{
+				items:['room_id: ',{
+						xtype:'textfield',
+						id:'room_id',
+						name:'room_id',
+						width:110
+					},"-",'room_name: ',{
 						xtype:'textfield',
 						id:'room_name',
 						name:'room_name',
@@ -189,6 +194,7 @@ var roomJS = function(){
 				Ext.apply(obj.baseParams,{
 						'start':0,
 						'limit':room_page.pageSize,
+						'room_id':Ext.getCmp('room_id').getValue(),
 						'room_name':Ext.getCmp('room_name').getValue()
 						});
 			});			
@@ -197,6 +203,7 @@ var roomJS = function(){
 		
 		function reset_query_room(){
 			//将查询条件置为空，不可以将查询条件的充值放到beforeload里
+			Ext.getCmp('room_id').setValue("");
 			Ext.getCmp('room_name').setValue("");
 			query_room();
 		};

@@ -213,7 +213,12 @@ var msJS = function(){
 		function createTbar(){
 			var listener = {specialkey:function(field, e){if(e.getKey()==Ext.EventObject.ENTER){query_ms();}}};
 			var oneTbar = new Ext.Toolbar({
-				items:['server_name: ',{
+				items:['server_id: ',{
+						xtype:'textfield',
+						id:'server_id',
+						name:'server_id',
+						width:110
+					},"-",'server_name: ',{
 						xtype:'textfield',
 						id:'server_name',
 						name:'server_name',
@@ -229,6 +234,12 @@ var msJS = function(){
 						xtype:'textfield',
 						id:'control_ip',
 						name:'control_ip',
+						width:110
+					},"-",
+					'room_id: ',{
+						xtype:'textfield',
+						id:'room_id',
+						name:'room_id',
 						width:110
 					},"-",
 					'room_name: ',{
@@ -255,9 +266,11 @@ var msJS = function(){
 				Ext.apply(obj.baseParams,{
 						'start':0,
 						'limit':server_page.pageSize,
+						'server_id':Ext.getCmp('server_id').getValue(),
 						'server_name':Ext.getCmp('server_name').getValue(),
 						'server_ip':Ext.getCmp('server_ip').getValue(),
 						'control_ip':Ext.getCmp('control_ip').getValue(),
+						'room_id':Ext.getCmp('room_id').getValue(),
 						'room_name':Ext.getCmp('room_name').getValue()
 						});
 			});			
@@ -265,10 +278,12 @@ var msJS = function(){
 		};
 		
 		function reset_query_ms(){
-			//将查询条件置为空，不可以将查询条件的充值放到beforeload里			
+			//将查询条件置为空，不可以将查询条件的充值放到beforeload里	
+			Ext.getCmp('server_id').setValue("");		
 			Ext.getCmp('server_name').setValue("");
 			Ext.getCmp('server_ip').setValue("");
 			Ext.getCmp('control_ip').setValue("");
+			Ext.getCmp('room_id').setValue("");
 			Ext.getCmp('room_name').setValue("");
 			query_ms();
 		};

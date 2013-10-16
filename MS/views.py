@@ -146,6 +146,12 @@ def get_ms_list(request, platform):
     
     kwargs = {}
     
+    v_server_id = ''
+    if 'server_id' in request.REQUEST:
+        v_server_id = request.REQUEST['server_id']
+    if(v_server_id != ''):
+        kwargs['server_id'] = v_server_id
+        
     v_server_name = ''
     if 'server_name' in request.REQUEST:
         v_server_name = request.REQUEST['server_name']
@@ -163,7 +169,13 @@ def get_ms_list(request, platform):
         v_control_ip = request.REQUEST['control_ip']
     if(v_control_ip != ''):
         kwargs['controll_ip'] = v_control_ip
-        
+    
+    v_room_id = ''
+    if 'room_id' in request.REQUEST:
+        v_room_id = request.REQUEST['room_id']
+    if(v_room_id != ''):
+        kwargs['room_id'] = v_room_id
+            
     v_room_name = ''
     if 'room_name' in request.REQUEST:
         v_room_name = request.REQUEST['room_name']

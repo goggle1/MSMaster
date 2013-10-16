@@ -85,6 +85,12 @@ def get_room_list(request, platform):
     
     kwargs = {}
     
+    v_room_id = ''
+    if 'room_id' in request.REQUEST:
+        v_room_id = request.REQUEST['room_id']
+    if(v_room_id != ''):
+        kwargs['room_id'] = v_room_id
+        
     v_room_name = ''
     if 'room_name' in request.REQUEST:
         v_room_name = request.REQUEST['room_name']

@@ -56,7 +56,7 @@ def hot_tasks_to_rooms(platform, file_name):
             if(ms_info == None):
                 print 'room_id=%d, ms_num=%d, dispatch %s failure!' % (one_room_id, ms_num, one_task)
             else:
-                log_file.write('hash=%s, ms_ip=%s\n' % (one_task, ms_info.db_record.controll_ip)) 
+                log_file.write('hash=%s, ms=%d, %s\n' % (one_task, ms_info.db_record.server_id, ms_info.db_record.controll_ip)) 
         ms_all.do_dispatch()
     
     log_file.close()    
