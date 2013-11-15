@@ -68,7 +68,7 @@ def ms_insert(platform, v_server_id, v_server_name, v_server_ip, v_server_port, 
         
 
 def get_ms_local(platform):
-    ms_list = []
+    ms_list = None
     if(platform == 'mobile'):
         ms_list = models.mobile_ms.objects.all()
     elif(platform == 'pc'):
@@ -239,6 +239,7 @@ def show_ms_list(request, platform):
 
 
 def get_ms_status(ms_local):    
+    ms_local.task_number = 0
     try:
         # get task number
         url = 'http://%s:%d/macross?cmd=queryglobalinfo' % (ms_local.controll_ip, ms_local.controll_port)
@@ -271,6 +272,8 @@ def get_ms_status(ms_local):
     except:
         print '%s get task number error' % (ms_local.controll_ip)
     
+    ms_local.total_disk_space = 0
+    ms_local.free_disk_space = 0
     try:
         # get disk space
         url = 'http://%s:%d/macross?cmd=querydisk' % (ms_local.controll_ip, ms_local.controll_port)
@@ -294,6 +297,7 @@ def get_ms_status(ms_local):
     except:
         print '%s get disk space error' % (ms_local.controll_ip)
     
+    ms_local.server_status1 = 0
     try:
         # get status    
         #req = urllib2.Request('http://%s:11000/ms/check?detail=0'%(ip))
@@ -421,14 +425,19 @@ def do_sync_ms_status(platform, record):
             if(ms_list.count() > 0):
                 one_ms = ms_list[0]
                 get_ms_status(one_ms)   
-
+    
     now_time = time.localtime(time.time())        
     end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
     record.end_time = end_time
     record.status = 2        
     output = 'now: %s, ' % (end_time)
-    output += 'ms num: %d, %d' % (num_local, len(ms_id_list))    
+    output += 'ms num: %d, %d [%s]' % (num_local, len(ms_id_list), ms_ids)    
     record.memo = output
+    
+    del ms_id_list[:]
+    #del ms_list_local[:]
+    ms_list_local = None
+    
     record.save()
         
 

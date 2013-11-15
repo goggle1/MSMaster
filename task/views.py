@@ -443,7 +443,8 @@ def upload_add_hits_num(platform, hits_date):
         if(line_num % 100 == 0):
             print 'file=%s, line_num=%d' % (upload_file, line_num)
         
-    hits_file.close()        
+    hits_file.close() 
+    
     print 'add_hits_num line_num=%d, num_insert=%d, num_update=%d' % (line_num, num_insert, num_update)            
     return (True, num_insert, num_update)
 
