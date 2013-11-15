@@ -26,8 +26,17 @@ class DB_CONFIG:
     password    = 'funshion'
     db          = 'macross'
     
+    
+class MS_DB_CONFIG:
+    host        = '192.168.160.203'
+    port        = 3306
+    user        = 'admin'
+    password    = '123456'
+    db          = 'mediaserver'    
+
 
 class HITS_FILE:
+    # 192.168.160.203
     template_mobile = '/media2/data_analysis/topdata/mo/logdata/logdata_%s_hashid_sort.result'
     template_pc     = '/media2/data_analysis/topdata/pc/logdata/logdata_%s_hashid_sort.result'
     hot_period      = 30

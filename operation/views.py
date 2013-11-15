@@ -170,7 +170,9 @@ def show_operation_list(request, platform):
     return HttpResponse(output)
 
 
-g_thread = None
+#g_thread = None
+g_thread_mobile = None
+g_thread_pc = None
 
 class Thread_JOBS(threading.Thread):
     #platform = ''
@@ -194,7 +196,7 @@ class Thread_JOBS(threading.Thread):
         elif(operation.type == 'upload_hits_num'):
             result = task.views.do_upload(self.platform, operation)
         elif(operation.type == 'calc_cold'):
-            result = task.views.do_cold(self.platform, operation)
+            result = task.views.do_cold2(self.platform, operation)
         elif(operation.type == 'sync_ms_db'):
             result = MS.views.do_sync_ms_db(self.platform, operation)
         elif(operation.type == 'sync_ms_status'):
@@ -217,16 +219,16 @@ class Thread_JOBS(threading.Thread):
         return result
             
             
-    def run(self):
-        # sort 
-        # 1. sync_hash_db
-        # 2. upload_hits_num ...        
-        # 3. calc_cold
-        # todo:
+    def run(self):        
         for operation in self.operation_list:
             self.run_operation(operation)  
-        global g_thread      
-        g_thread = None
+        #global g_thread
+        global g_thread_mobile
+        global g_thread_pc
+        if(self.platform == 'mobile'):
+            g_thread_mobile = None
+        elif(self.platform == 'pc'):
+            g_thread_pc = None
 
 
 def operation_type_int(v_type):
@@ -279,14 +281,27 @@ def do_selected_operations(request, platform):
     for op in operation_list:
         print '%s %s' % (op.type, op.name)
     
-    global g_thread
-    if(g_thread == None):    
-        g_thread = Thread_JOBS(platform, operation_list)            
-        g_thread.start()
-        output += 'do %s' % (ids)
-    else:
-        output += 'Thread_JOBS has started!'
-             
+    #global g_thread
+    global g_thread_mobile
+    global g_thread_pc    
+    if(platform == 'mobile'):
+        if(g_thread_mobile == None):
+            g_thread_mobile = Thread_JOBS(platform, operation_list)            
+            g_thread_mobile.start()    
+            output += 'do %s' % (ids)  
+            for operation in operation_list:      
+                output += '%s,' % (str(operation.id))
+        else:
+            output += 'Thread_JOBS has started!'
+    elif(platform == 'pc'):
+        if(g_thread_pc == None):
+            g_thread_pc = Thread_JOBS(platform, operation_list)            
+            g_thread_pc.start()    
+            output += 'do %s' % (ids) 
+            for operation in operation_list:      
+                output += '%s,' % (str(operation.id))
+        else:
+            output += 'Thread_JOBS has started!'             
         
     return HttpResponse(output)
 
@@ -307,14 +322,26 @@ def do_all_operations(request, platform):
     for op in operation_list:
         print '%s %s' % (op.type, op.name)
     
-    global g_thread
-    if(g_thread == None):
-        g_thread = Thread_JOBS(platform, operation_list)            
-        g_thread.start()    
-        output += 'do '  
-        for operation in operation_list:      
-            output += '%s,' % (str(operation.id))
-    else:
-        output += 'Thread_JOBS has started!'
+    #global g_thread
+    global g_thread_mobile
+    global g_thread_pc    
+    if(platform == 'mobile'):
+        if(g_thread_mobile == None):
+            g_thread_mobile = Thread_JOBS(platform, operation_list)            
+            g_thread_mobile.start()    
+            output += 'do '  
+            for operation in operation_list:      
+                output += '%s,' % (str(operation.id))
+        else:
+            output += 'Thread_JOBS has started!'
+    elif(platform == 'pc'):
+        if(g_thread_pc == None):
+            g_thread_pc = Thread_JOBS(platform, operation_list)            
+            g_thread_pc.start()    
+            output += 'do '  
+            for operation in operation_list:      
+                output += '%s,' % (str(operation.id))
+        else:
+            output += 'Thread_JOBS has started!'
             
     return HttpResponse(output)    

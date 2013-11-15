@@ -486,8 +486,56 @@ def do_cold(platform, record):
     record.status = 2                
     record.memo = output
     record.save()
-    return True    
+    return True 
+   
+  
+def db_calc_cold(platform):    
+    sql = ""
     
+    #reload(sys)
+    #sys.setdefaultencoding('utf8')
+    
+    db = DB.db.DB_MYSQL()
+    #db.connect("192.168.160.203", 3306, "admin", "123456", "mediaserver")
+    db.connect(DB.db.MS_DB_CONFIG.host, DB.db.MS_DB_CONFIG.port, DB.db.MS_DB_CONFIG.user, DB.db.MS_DB_CONFIG.password, DB.db.MS_DB_CONFIG.db)
+    if(platform == 'mobile'):
+        sql = "update mobile_task set cold1=TIMESTAMPDIFF(DAY, NOW(), last_hit_time) where last_hit_time is not null"
+        db.execute(sql)
+        sql = "update mobile_task set cold1=TIMESTAMPDIFF(DAY, NOW(), online_time) where last_hit_time is null and online_time is not null"
+        db.execute(sql)
+    elif(platform == 'pc'):
+        sql = "update pc_task set cold1=TIMESTAMPDIFF(DAY, NOW(), last_hit_time) where last_hit_time is not null"
+        db.execute(sql)
+        sql = "update pc_task set cold1=TIMESTAMPDIFF(DAY, NOW(), online_time) where last_hit_time is null and online_time is not null"
+        db.execute(sql)
+    db.close() 
+    return
+
+  
+def do_cold2(platform, record):
+    num_calc = 0
+    
+    now_time = time.localtime(time.time())        
+    begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+    print 'begin@ %s' % (begin_time)
+    record.begin_time = begin_time
+    record.status = 1
+    record.save()
+         
+    db_calc_cold(platform)
+        
+    now_time = time.localtime(time.time())        
+    end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+    print 'end@ %s' % (end_time)
+    output = 'now: %s, ' % (end_time)
+    output += 'num_calc: %d, ' % (num_calc)
+    print output
+    record.end_time = end_time
+    record.status = 2                
+    record.memo = output
+    record.save()
+    return True  
+
             
 def do_upload(platform, record):
     now_time = time.localtime(time.time())        

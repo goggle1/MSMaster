@@ -545,7 +545,7 @@ def ms_do_add_hot_tasks(platform, record):
     output += 'num_dispatching: %d, ' % (num_dispatching)
     output += 'ms num: %d, ' % (len(ms_list))
     output += 'ms tasks num: %d, ' % (ms_tasks_num)
-    output += 'total_dispatch_num: %d, ' % (total_dispatch_num)
+    output += 'should_dispatch_num: %d, actual_dispatch_num: %d' % (total_dispatch_num, num)
     print output
     record.end_time = end_time
     record.status = 2        
