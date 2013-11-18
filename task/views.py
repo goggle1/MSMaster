@@ -789,7 +789,7 @@ class Thread_COLD(threading.Thread):
         self.num_calc = 0     
             
     def run(self):
-        result = do_cold(self.platform, self.record)
+        result = do_cold2(self.platform, self.record)
         return result
 
 
