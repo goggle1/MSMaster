@@ -523,7 +523,7 @@ def ms_do_add_hot_tasks(platform, record):
     #hot_tasks = tasks.order_by('-hot')
     hot_tasks = tasks.filter(hot__gt=0).order_by('-hot')
     print 'hot_tasks count: %d' % (hot_tasks.count())
-    for task1 in hot_tasks:
+    for task1 in hot_tasks.iterator():
         print 'hot task: %d, %s' % (task1.hot, task1.hash)
         one_ms = ms_all.find_task(task1.hash)
         if(one_ms == None):                        
@@ -645,7 +645,7 @@ def ms_do_delete_cold_tasks(platform, record):
     log_file.write('rule 1 begin')
     cold_tasks = tasks.filter(cold1__lt=-30.0).order_by('cold1', 'hot')
     print 'cold_tasks count: %d' % (cold_tasks.count())
-    for task1 in cold_tasks:
+    for task1 in cold_tasks.iterator():
         one_ms = ms_all.find_task(task1.hash)
         if(one_ms != None):
             #print '%s delete' % (task1.hash)            

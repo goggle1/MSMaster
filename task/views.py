@@ -60,6 +60,15 @@ def get_tasks_local(platform):
     return task_list
 
 
+def get_hot_tasks_local(platform):
+    task_list = None
+    if(platform == 'mobile'):
+        task_list = models.mobile_task.objects.filter(hot__gt=0).order_by('-hot')        
+    elif(platform == 'pc'):
+        task_list = models.pc_task.objects.filter(hot__gt=0).order_by('-hot') 
+    return task_list
+
+
 def get_tasks_by_hash(platform, hash_id):
     task_list = None
     if(platform == 'mobile'):
@@ -399,7 +408,8 @@ def upload_add_hits_num(platform, hits_date):
         hits_file = open(upload_file, "r")
     except:            
         return (False, num_insert, num_update)
-        
+    
+    # method 1    
     hash_list_local = get_tasks_local(platform)
     
     line_num = 0 
@@ -416,7 +426,10 @@ def upload_add_hits_num(platform, hits_date):
             hits_num = items[0].strip()
             hash_id = items[1].strip()
             #print '%s, %s' % (hits_num, hash_id)
+            # method 1  
             task_list = hash_list_local.filter(hash=hash_id)
+            # method 2
+            #task_list = get_tasks_by_hash(hash_id);
             if(task_list.count() > 0):
                 #print '%s, %s [update +]' % (hits_num, hash_id)
                 hash_local = task_list[0]

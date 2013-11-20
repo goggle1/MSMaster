@@ -9,7 +9,7 @@ import DB.db
 class MS_INFO:
     
     def __init__(self, v_platform, v_db_record):        
-        self.platform = ''
+        self.platform = None
         self.db_record = None
         #self.task_list = []
         self.task_dict = {}
@@ -19,6 +19,20 @@ class MS_INFO:
         self.platform = v_platform
         self.db_record = v_db_record
         
+       
+    def __del__(self):
+        print "in MS_INFO.delete()"
+        self.platform = None
+        self.db_record = None
+        
+        self.task_dict.clear()
+        self.delete_dict.clear()   
+        del self.add_list[:]
+        
+        self.task_dict = None
+        self.delete_dict = None
+        self.add_list = None
+            
         
         
 class MS_ALL:
@@ -56,7 +70,30 @@ class MS_ALL:
                 if(ms_info.db_record.is_dispatch == 1):
                     self.ms_list_allowed_add.append(ms_info)
             
+    def __del__(self):
+        print "in MS_ALL.delete()"  
+        self.platform = None
+        
+        for ms_info in self.ms_list:
+            del ms_info      
+        for ms_info in self.ms_list_allowed_add:
+            del ms_info
+        for ms_info in self.ms_list_allowed_delete:
+            del ms_info        
+        for ms_id in self.ms_id_list:
+            del ms_id
             
+        del self.ms_list[:]
+        del self.ms_list_allowed_add[:]    
+        del self.ms_list_allowed_delete[:]  
+        del self.ms_id_list[:]
+        
+        self.ms_list = None
+        self.ms_list_allowed_add = None    
+        self.ms_list_allowed_delete = None  
+        self.ms_id_list = None
+                   
+    
     def get_tasks(self):
         for one in self.ms_list:
             print '%s get tasks begin' % (one.db_record.controll_ip)
@@ -112,15 +149,18 @@ class MS_ALL:
                 sql = "SELECT dat_hash FROM fs_mobile_dat d, fs_mobile_ms_dat m WHERE d.dat_id = m.dat_id AND m.server_id=%d" % (one.db_record.server_id)
             elif(self.platform == 'pc'):
                 sql = "SELECT task_hash FROM fs_task t,fs_ms_task m WHERE t.task_id = m.task_id AND m.server_id=%d" % (one.db_record.server_id)    
-            db.execute(sql)        
+            db.execute(sql)      
+            #print type(db.cur)  
+            #print type(db.cur.fetchall())
             for row in db.cur.fetchall():
-                col_num = 0  
+                col_num = 0
                 for r in row:
                     if(col_num == 0):
-                        one.task_dict[r] = '1'                
+                        one.task_dict[str(r)] = '1'                
                     col_num += 1   
             print '%d, %s get tasks end, task_number=%d' % (one.db_record.server_id, one.db_record.controll_ip, len(one.task_dict)) 
         db.close()  
+        #del db
         return True
             
             
@@ -218,14 +258,14 @@ class MS_ALL:
         values['sign']      = sign
                 
         url = 'http://%s:%d/api/?cli=ms&cmd=report_hot_task' % (self.MACROSS_IP, self.MACROSS_PORT)
-        print 'ms_id=%d, ms_ip=%s, task_num=%d, url=%s' % (one.db_record.server_id, one.db_record.controll_ip, num, url)
+        #print 'ms_id=%d, ms_ip=%s, task_num=%d, url=%s' % (one.db_record.server_id, one.db_record.controll_ip, num, url)
         
         data = urllib.urlencode(values)
         #print data
         req = urllib2.Request(url, data)
         response = urllib2.urlopen(req)
-        the_page = response.read()
-        print the_page
+        the_page = response.read()        
+        #print the_page        
         
         return True        
         
@@ -334,5 +374,7 @@ class MS_ALL:
     def get_cur_ms(self):
         one = self.ms_list[self.round_robin_index]
         return one
+    
+    
     
         
