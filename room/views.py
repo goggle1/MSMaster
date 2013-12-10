@@ -477,8 +477,8 @@ def do_delete_cold_tasks(platform, record):
     print 'all_tasks count: %d' % (all_tasks.count())
         
     # rule 1:
-    log_file.write('rule 1 begin')
-    cold_tasks = all_tasks.filter(cold1__lt=-30.0).order_by('cold1', 'hot')
+    log_file.write('rule 1 begin\n')
+    cold_tasks = all_tasks.filter(cold1__lt=-10.0).order_by('cold1', 'hot')
     print 'cold_tasks count: %d' % (cold_tasks.count())
     for task1 in cold_tasks.iterator():
         one_ms = ms_all.find_task(task1.hash)
@@ -495,7 +495,7 @@ def do_delete_cold_tasks(platform, record):
         else:
             #print '%s non_exist' % (task1.hash)
             log_file.write('[%s, %d, %f]%s non_exist\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash))
-    log_file.write('rule 1 end')
+    log_file.write('rule 1 end\n')
     
     print 'cold_tasks ref count0:%d' % sys.getrefcount(cold_tasks)
     del cold_tasks
@@ -506,15 +506,15 @@ def do_delete_cold_tasks(platform, record):
         
     # rule 2:    
     if(real_delete_num < total_delete_num):
-        log_file.write('rule 2 begin')
+        log_file.write('rule 2 begin\n')
         now = datetime.datetime.now()
-        day_delta = 30
+        day_delta = 10
         days_ago = now - datetime.timedelta(days=day_delta)
         time_limit = '%04d-%02d-%02d 00:00:00+00:00' % (days_ago.year, days_ago.month, days_ago.day)
         cold_tasks = all_tasks.filter(online_time__lt=time_limit).order_by('hot')
         print 'cold_tasks count: %d' % (cold_tasks.count())
-        cold_tasks2 = cold_tasks.filter(hot__lt=300)
-        #cold_tasks2 = cold_tasks
+        #cold_tasks2 = cold_tasks.filter(hot__lt=300)
+        cold_tasks2 = cold_tasks
         print 'cold_tasks2 count: %d' % (cold_tasks2.count())
         #for task1 in cold_tasks:
         for task1 in cold_tasks2.iterator():
@@ -532,7 +532,7 @@ def do_delete_cold_tasks(platform, record):
             else:
                 #print '%s non_exist' % (task1.hash)
                 log_file.write('[%s, %d, %f]%s non_exist\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash))
-        log_file.write('rule 2 end')
+        log_file.write('rule 2 end\n')
         
     log_file.close()
     
@@ -594,7 +594,174 @@ def do_delete_cold_tasks(platform, record):
     '''
     
     return True
+
+'''
+def do_delete_cold_tasks(platform, record):
+    # Enable automatic garbage collection.
+    gc.enable()
+    #gc.set_debug(gc.DEBUG_LEAK) 
+    # Set the garbage collection debugging flags.
+    #gc.set_debug(gc.DEBUG_COLLECTABLE | gc.DEBUG_UNCOLLECTABLE | \
+    #    gc.DEBUG_INSTANCES | gc.DEBUG_OBJECTS)
+    gc.set_debug( gc.DEBUG_UNCOLLECTABLE | \
+        gc.DEBUG_INSTANCES | gc.DEBUG_OBJECTS | gc.DEBUG_SAVEALL)
         
+    now_time = time.localtime(time.time())        
+    begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+    record.begin_time = begin_time
+    record.status = 1
+    record.save()
+    
+    room_id = record.name
+    fields = record.memo.split('|')
+    s_suggest_task_number = fields[0]
+    s_num_deleting = fields[1]
+    
+    suggest_task_number = string.atoi(s_suggest_task_number)
+    num_deleting = string.atoi(s_num_deleting)
+        
+    ms_list = get_ms_list_in_room(platform, room_id)
+    if(len(ms_list) <= 0):
+        now_time = time.localtime(time.time())        
+        end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+        output = 'now: %s, ' % (end_time)
+        output += 'room_id: %s, ' % (room_id)
+        output += 'suggest_task_number: %d, ' % (suggest_task_number)
+        output += 'num_deleting: %d, ' % (num_deleting)
+        output += 'ms num: %d, ' % (len(ms_list))
+        record.end_time = end_time
+        record.status = 2        
+        record.memo = output
+        record.save()
+        return False
+        
+    print 'ms_list num: %d' % (len(ms_list))
+    
+    ms_all = MS_ALL(platform, ms_list)
+    #ms_all.get_tasks()
+    ms_all.get_tasks_macross()
+    
+    ms_tasks_num = ms_all.get_tasks_num()    
+    total_delete_num = num_deleting
+    if(suggest_task_number > 0):
+        if(ms_tasks_num > suggest_task_number):
+            total_delete_num = ms_tasks_num - suggest_task_number
+    
+    if(total_delete_num <= 0):
+        now_time = time.localtime(time.time())        
+        end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+        output = 'now: %s, ' % (end_time)
+        output += 'room_id: %s, ' % (room_id)
+        output += 'suggest_task_number: %d, ' % (suggest_task_number)
+        output += 'num_deleting: %d, ' % (num_deleting)
+        output += 'ms num: %d, ' % (len(ms_list))
+        output += 'ms tasks num: %d, ' % (ms_tasks_num)
+        output += 'total_delete_num: %d, ' % (total_delete_num)
+        print output
+        record.end_time = end_time
+        record.status = 2        
+        record.memo = output
+        record.save()
+        return True
+    
+    file_name = 'cold_tasks_%s_%d_%d.log' % (room_id, suggest_task_number, num_deleting)
+    log_file = open(file_name, 'w')    
+            
+    real_delete_num = 0
+    result = False
+    #all_tasks = task.views.get_tasks_local(platform) 
+    #print 'all_tasks count: %d' % (all_tasks.count())
+        
+    # rule 1:
+    log_file.write('rule 1 begin\n')
+    #cold_tasks = all_tasks.filter(cold1__lt=-30.0).order_by('cold1', 'hot')
+    #cold_tasks = all_tasks.filter(cold1__lt=-10.0).order_by('cold1', 'hot')
+    #print 'cold_tasks count: %d' % (cold_tasks.count())
+    cold_tasks = task.views.get_cold_tasks_rule1(platform)
+    print 'cold_tasks count: %d' % (len(cold_tasks))
+    #for task1 in cold_tasks.iterator():
+    for task1 in cold_tasks:
+        #print 'cold_task %s, %s, %s, %s, %s' % (task1['hash'], task1['online_time'], task1['hot'], task1['cold1'], task1['last_hit_time'])
+        cold1 = string.atof(task1['cold1'])
+        if(cold1 >= -10.0):
+            break
+        one_ms = ms_all.find_task(task1['hash'])
+        if(one_ms != None):
+            #print '%s delete' % (task1.hash)            
+            result = ms_all.delete_cold_task(one_ms, task1['hash'])
+            if(result == True):
+                log_file.write('[%s, %s, %s]%s delete from %d, %s\n' % (task1['online_time'], task1['hot'], task1['cold1'], task1['hash'], one_ms.db_record.server_id, one_ms.db_record.controll_ip))
+                real_delete_num += 1
+                if(real_delete_num >= total_delete_num):
+                    break
+            else:
+                log_file.write('[%s, %s, %s]%s marked\n' % (task1['online_time'], task1['hot'], task1['cold1'], task1['hash']))
+        else:
+            #print '%s non_exist' % (task1.hash)
+            log_file.write('[%s, %s, %s]%s non_exist\n' % (task1['online_time'], task1['hot'], task1['cold1'], task1['hash']))
+    log_file.write('rule 1 end\n')
+            
+    print 'real_delete_num=%d, total_delete_num=%d' % (real_delete_num, total_delete_num)
+    
+    # rule 2:    
+    if(real_delete_num < total_delete_num):
+        log_file.write('rule 2 begin\n')
+        now = datetime.datetime.now()
+        #day_delta = 30
+        day_delta = 10
+        days_ago = now - datetime.timedelta(days=day_delta)
+        #time_limit = '%04d-%02d-%02d 00:00:00+00:00' % (days_ago.year, days_ago.month, days_ago.day)
+        time_limit = '%04d-%02d-%02d 00:00:00' % (days_ago.year, days_ago.month, days_ago.day)
+        #cold_tasks = all_tasks.filter(online_time__lt=time_limit).order_by('hot')
+        #cold_tasks = all_tasks.order_by('hot')
+        cold_tasks = task.views.get_cold_tasks_rule2(platform, time_limit)
+        print 'cold_tasks count: %d' % (len(cold_tasks))    
+        #for task1 in cold_tasks:
+        for task1 in cold_tasks:
+            #print 'cold_task %s, %s, %s, %s, %s' % (task1['hash'], task1['online_time'], task1['hot'], task1['cold1'], task1['last_hit_time'])
+            one_ms = ms_all.find_task(task1['hash'])
+            if(one_ms != None):
+                #print '%s delete' % (task1.hash)                
+                result = ms_all.delete_cold_task(one_ms, task1['hash'])
+                if(result == True):
+                    log_file.write('[%s, %s, %s]%s delete from %d, %s\n' % (task1['online_time'], task1['hot'], task1['cold1'], task1['hash'], one_ms.db_record.server_id, one_ms.db_record.controll_ip))                    
+                    real_delete_num += 1
+                    if(real_delete_num >= total_delete_num):
+                        break
+                else:
+                    log_file.write('[%s, %s, %s]%s delete from %d, %s\n' % (task1['online_time'], task1['hot'], task1['cold1'], task1['hash'], one_ms.db_record.server_id, one_ms.db_record.controll_ip))
+            else:
+                #print '%s non_exist' % (task1.hash)
+                log_file.write('[%s, %s, %s]%s non_exist\n' % (task1['online_time'], task1['hot'], task1['cold1'], task1['hash']))
+        log_file.write('rule 2 end\n')
+        
+    log_file.close()
+    
+    ms_all.do_delete()
+        
+    now_time = time.localtime(time.time())        
+    end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
+    output = 'now: %s, ' % (end_time)
+    output += 'room_id: %s, ' % (room_id)
+    output += 'suggest_task_number: %d, ' % (suggest_task_number)
+    output += 'num_deleting: %d, ' % (num_deleting)
+    output += 'ms num: %d, ' % (len(ms_list))
+    output += 'ms tasks num: %d, ' % (ms_tasks_num)
+    output += 'total_delete_num: %d, real_delete_num: %d' % (total_delete_num, real_delete_num)
+    print output
+    record.end_time = end_time
+    record.status = 2        
+    record.memo = output
+    record.save()
+        
+    print 'begin collect...'
+    _unreachable = gc.collect()
+    print 'unreachable object num:%d' % _unreachable
+    print 'garbage object num:%d' % len(gc.garbage)
+        
+    return True
+'''
+      
     
 def do_sync_room_db(platform, record):
     now_time = time.localtime(time.time())        
@@ -973,4 +1140,5 @@ def sync_room_status(request, platform):
     return HttpResponse(json.dumps(return_datas))    
 
 
+    
     

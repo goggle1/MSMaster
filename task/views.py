@@ -68,6 +68,85 @@ def get_hot_tasks_local(platform):
         task_list = models.pc_task.objects.filter(hot__gt=0).order_by('-hot') 
     return task_list
 
+def get_cold_tasks_rule1(platform):
+    task_list = []
+    
+    db = DB.db.DB_MYSQL()
+    db.connect(DB.db.MS_DB_CONFIG.host, DB.db.MS_DB_CONFIG.port, DB.db.MS_DB_CONFIG.user, DB.db.MS_DB_CONFIG.password, DB.db.MS_DB_CONFIG.db)
+  
+    sql = "SELECT hash, online_time, is_valid, filesize, hot, cold1, cold2, cold3, last_hit_time, total_hits_num FROM %s_task ORDER BY cold1 ASC, hot ASC" % (platform)         
+    print sql
+    db.execute(sql)
+    
+    for row in db.cur.fetchall():
+        task1 = {}      
+        col_num = 0  
+        for r in row:
+            if(col_num == 0):
+                task1['hash'] = r
+            elif(col_num == 1):
+                task1['online_time'] = r
+            elif(col_num == 2):
+                task1['is_valid'] = r
+            elif(col_num == 3):
+                task1['filesize'] = r
+            elif(col_num == 4):
+                task1['hot'] = r
+            elif(col_num == 5):
+                task1['cold1'] = r
+            elif(col_num == 6):
+                task1['cold2'] = r
+            elif(col_num == 7):
+                task1['cold3'] = r
+            elif(col_num == 8):
+                task1['last_hit_time'] = r
+            elif(col_num == 9):
+                task1['total_hits_num'] = r
+            col_num += 1
+        task_list.append(task1)
+     
+    return task_list
+
+
+def get_cold_tasks_rule2(platform, time_limit):
+    task_list = []
+    
+    db = DB.db.DB_MYSQL()
+    db.connect(DB.db.MS_DB_CONFIG.host, DB.db.MS_DB_CONFIG.port, DB.db.MS_DB_CONFIG.user, DB.db.MS_DB_CONFIG.password, DB.db.MS_DB_CONFIG.db)
+  
+    sql = "SELECT hash, online_time, is_valid, filesize, hot, cold1, cold2, cold3, last_hit_time, total_hits_num FROM %s_task where online_time < '%s' ORDER BY hot ASC" % (platform, time_limit)         
+    print sql
+    db.execute(sql)
+    
+    for row in db.cur.fetchall():
+        task1 = {}      
+        col_num = 0  
+        for r in row:
+            if(col_num == 0):
+                task1['hash'] = r
+            elif(col_num == 1):
+                task1['online_time'] = r
+            elif(col_num == 2):
+                task1['is_valid'] = r
+            elif(col_num == 3):
+                task1['filesize'] = r
+            elif(col_num == 4):
+                task1['hot'] = r
+            elif(col_num == 5):
+                task1['cold1'] = r
+            elif(col_num == 6):
+                task1['cold2'] = r
+            elif(col_num == 7):
+                task1['cold3'] = r
+            elif(col_num == 8):
+                task1['last_hit_time'] = r
+            elif(col_num == 9):
+                task1['total_hits_num'] = r
+            col_num += 1
+        task_list.append(task1)
+     
+    return task_list
+
 
 def get_tasks_by_hash(platform, hash_id):
     task_list = None
