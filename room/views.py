@@ -409,7 +409,7 @@ def do_delete_cold_tasks(platform, record):
     #    gc.DEBUG_INSTANCES | gc.DEBUG_OBJECTS)
     gc.set_debug( gc.DEBUG_UNCOLLECTABLE | \
         gc.DEBUG_INSTANCES | gc.DEBUG_OBJECTS | gc.DEBUG_SAVEALL)
-    
+        
     now_time = time.localtime(time.time())        
     begin_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
     record.begin_time = begin_time
@@ -473,70 +473,75 @@ def do_delete_cold_tasks(platform, record):
             
     real_delete_num = 0
     result = False
-    all_tasks = task.views.get_tasks_local(platform) 
-    print 'all_tasks count: %d' % (all_tasks.count())
+    #all_tasks = task.views.get_tasks_local(platform) 
+    #print 'all_tasks count: %d' % (all_tasks.count())
         
     # rule 1:
-    log_file.write('rule 1 begin')
-    cold_tasks = all_tasks.filter(cold1__lt=-30.0).order_by('cold1', 'hot')
-    print 'cold_tasks count: %d' % (cold_tasks.count())
-    for task1 in cold_tasks.iterator():
-        one_ms = ms_all.find_task(task1.hash)
+    log_file.write('rule 1 begin\n')
+    #cold_tasks = all_tasks.filter(cold1__lt=-30.0).order_by('cold1', 'hot')
+    #cold_tasks = all_tasks.filter(cold1__lt=-10.0).order_by('cold1', 'hot')
+    #print 'cold_tasks count: %d' % (cold_tasks.count())
+    cold_tasks = task.views.get_cold_tasks_rule1(platform)
+    print 'cold_tasks count: %d' % (len(cold_tasks))
+    #for task1 in cold_tasks.iterator():
+    for task1 in cold_tasks:
+        #print 'cold_task %s, %s, %s, %s, %s' % (task1['hash'], task1['online_time'], task1['hot'], task1['cold1'], task1['last_hit_time'])
+        cold1 = string.atof(task1['cold1'])
+        if(cold1 >= -10.0):
+            break
+        one_ms = ms_all.find_task(task1['hash'])
         if(one_ms != None):
             #print '%s delete' % (task1.hash)            
-            result = ms_all.delete_cold_task(one_ms, task1.hash)
+            result = ms_all.delete_cold_task(one_ms, task1['hash'])
             if(result == True):
-                log_file.write('[%s, %d, %f]%s delete from %d, %s\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash, one_ms.db_record.server_id, one_ms.db_record.controll_ip))
+                log_file.write('[%s, %s, %s]%s delete from %d, %s\n' % (task1['online_time'], task1['hot'], task1['cold1'], task1['hash'], one_ms.db_record.server_id, one_ms.db_record.controll_ip))
                 real_delete_num += 1
                 if(real_delete_num >= total_delete_num):
                     break
             else:
-                log_file.write('[%s, %d, %f]%s marked\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash))
+                log_file.write('[%s, %s, %s]%s marked\n' % (task1['online_time'], task1['hot'], task1['cold1'], task1['hash']))
         else:
             #print '%s non_exist' % (task1.hash)
-            log_file.write('[%s, %d, %f]%s non_exist\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash))
-    log_file.write('rule 1 end')
+            log_file.write('[%s, %s, %s]%s non_exist\n' % (task1['online_time'], task1['hot'], task1['cold1'], task1['hash']))
+    log_file.write('rule 1 end\n')
+            
+    print 'real_delete_num=%d, total_delete_num=%d' % (real_delete_num, total_delete_num)
     
-    print 'cold_tasks ref count0:%d' % sys.getrefcount(cold_tasks)
-    del cold_tasks
-    try:
-        print 'cold_tasks ref count1:%d' % sys.getrefcount(cold_tasks)
-    except UnboundLocalError:
-        print 'cold_tasks is invalid!'
-        
     # rule 2:    
     if(real_delete_num < total_delete_num):
-        log_file.write('rule 2 begin')
+        log_file.write('rule 2 begin\n')
         now = datetime.datetime.now()
-        day_delta = 30
+        #day_delta = 30
+        day_delta = 10
         days_ago = now - datetime.timedelta(days=day_delta)
-        time_limit = '%04d-%02d-%02d 00:00:00+00:00' % (days_ago.year, days_ago.month, days_ago.day)
-        cold_tasks = all_tasks.filter(online_time__lt=time_limit).order_by('hot')
-        print 'cold_tasks count: %d' % (cold_tasks.count())
-        cold_tasks2 = cold_tasks.filter(hot__lt=300)
-        #cold_tasks2 = cold_tasks
-        print 'cold_tasks2 count: %d' % (cold_tasks2.count())
+        #time_limit = '%04d-%02d-%02d 00:00:00+00:00' % (days_ago.year, days_ago.month, days_ago.day)
+        time_limit = '%04d-%02d-%02d 00:00:00' % (days_ago.year, days_ago.month, days_ago.day)
+        #cold_tasks = all_tasks.filter(online_time__lt=time_limit).order_by('hot')
+        #cold_tasks = all_tasks.order_by('hot')
+        cold_tasks = task.views.get_cold_tasks_rule2(platform, time_limit)
+        print 'cold_tasks count: %d' % (len(cold_tasks))    
         #for task1 in cold_tasks:
-        for task1 in cold_tasks2.iterator():
-            one_ms = ms_all.find_task(task1.hash)
+        for task1 in cold_tasks:
+            #print 'cold_task %s, %s, %s, %s, %s' % (task1['hash'], task1['online_time'], task1['hot'], task1['cold1'], task1['last_hit_time'])
+            one_ms = ms_all.find_task(task1['hash'])
             if(one_ms != None):
                 #print '%s delete' % (task1.hash)                
-                result = ms_all.delete_cold_task(one_ms, task1.hash)
+                result = ms_all.delete_cold_task(one_ms, task1['hash'])
                 if(result == True):
-                    log_file.write('[%s, %d, %f]%s delete from %d, %s\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash, one_ms.db_record.server_id, one_ms.db_record.controll_ip))                    
+                    log_file.write('[%s, %s, %s]%s delete from %d, %s\n' % (task1['online_time'], task1['hot'], task1['cold1'], task1['hash'], one_ms.db_record.server_id, one_ms.db_record.controll_ip))                    
                     real_delete_num += 1
                     if(real_delete_num >= total_delete_num):
                         break
                 else:
-                    log_file.write('[%s, %d, %f]%s delete from %d, %s\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash, one_ms.db_record.server_id, one_ms.db_record.controll_ip))
+                    log_file.write('[%s, %s, %s]%s delete from %d, %s\n' % (task1['online_time'], task1['hot'], task1['cold1'], task1['hash'], one_ms.db_record.server_id, one_ms.db_record.controll_ip))
             else:
                 #print '%s non_exist' % (task1.hash)
-                log_file.write('[%s, %d, %f]%s non_exist\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash))
-        log_file.write('rule 2 end')
+                log_file.write('[%s, %s, %s]%s non_exist\n' % (task1['online_time'], task1['hot'], task1['cold1'], task1['hash']))
+        log_file.write('rule 2 end\n')
         
     log_file.close()
     
-    ms_all.do_delete()
+    #ms_all.do_delete()
         
     now_time = time.localtime(time.time())        
     end_time = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", now_time)
@@ -552,49 +557,14 @@ def do_delete_cold_tasks(platform, record):
     record.status = 2        
     record.memo = output
     record.save()
-    
-    print 'cold_tasks ref count0:%d' % sys.getrefcount(cold_tasks)
-    del cold_tasks
-    try:
-        print 'cold_tasks ref count1:%d' % sys.getrefcount(cold_tasks)
-    except UnboundLocalError:
-        print 'cold_tasks is invalid!'
-    
-    print 'all_tasks ref count0:%d' % sys.getrefcount(all_tasks)
-    del all_tasks
-    try:
-        print 'tasks all_tasks count1:%d' % sys.getrefcount(all_tasks)
-    except UnboundLocalError:
-        print 'all_tasks is invalid!'
-       
-    print 'ms_all ref count0:%d' % sys.getrefcount(ms_all)
-    del ms_all
-    try:
-        print 'ms_all ref count1:%d' % sys.getrefcount(ms_all)
-    except UnboundLocalError:
-        print 'ms_all is invalid!'
-         
-    print 'ms_list ref count0:%d' % sys.getrefcount(ms_list)
-    del ms_list
-    try:
-        print 'ms_list ref count1:%d' % sys.getrefcount(ms_list)
-    except UnboundLocalError:
-        print 'ms_list is invalid!' 
         
     print 'begin collect...'
     _unreachable = gc.collect()
     print 'unreachable object num:%d' % _unreachable
     print 'garbage object num:%d' % len(gc.garbage)
-    '''
-    index = 0
-    for garbage in gc.garbage:
-        print 'index=[%d], type=[%s]' % (index, type(garbage))        
-        #print garbage
-        index += 1
-    '''
-    
-    return True
         
+    return True
+      
     
 def do_sync_room_db(platform, record):
     now_time = time.localtime(time.time())        
@@ -973,4 +943,5 @@ def sync_room_status(request, platform):
     return HttpResponse(json.dumps(return_datas))    
 
 
+    
     
