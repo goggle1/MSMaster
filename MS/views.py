@@ -642,8 +642,8 @@ def ms_do_delete_cold_tasks(platform, record):
     print 'tasks count: %d' % (tasks.count())
         
     # rule 1:
-    log_file.write('rule 1 begin')
-    cold_tasks = tasks.filter(cold1__lt=-30.0).order_by('cold1', 'hot')
+    log_file.write('rule 1 begin\n')
+    cold_tasks = tasks.filter(cold1__lt=-10.0).order_by('cold1', 'hot')
     print 'cold_tasks count: %d' % (cold_tasks.count())
     for task1 in cold_tasks.iterator():
         one_ms = ms_all.find_task(task1.hash)
@@ -660,18 +660,19 @@ def ms_do_delete_cold_tasks(platform, record):
         else:
             #print '%s non_exist' % (task1.hash)
             log_file.write('[%s, %d, %f]%s non_exist\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash))
-    log_file.write('rule 1 end')
+    log_file.write('rule 1 end\n')
         
     # rule 2:    
     if(real_delete_num < total_delete_num):
-        log_file.write('rule 2 begin')
+        log_file.write('rule 2 begin\n')
         now = datetime.datetime.now()
-        day_delta = 30
+        day_delta = 10
         days_ago = now - datetime.timedelta(days=day_delta)
         time_limit = '%04d-%02d-%02d 00:00:00+00:00' % (days_ago.year, days_ago.month, days_ago.day)
         cold_tasks = tasks.filter(online_time__lt=time_limit).order_by('hot')
         print 'cold_tasks count: %d' % (cold_tasks.count())
-        cold_tasks2 = cold_tasks.filter(hot__lt=300)
+        #cold_tasks2 = cold_tasks.filter(hot__lt=300)
+        cold_tasks2 = cold_tasks
         #cold_tasks2 = cold_tasks
         print 'cold_tasks2 count: %d' % (cold_tasks2.count())
         #for task1 in cold_tasks:
@@ -690,7 +691,7 @@ def ms_do_delete_cold_tasks(platform, record):
             else:
                 #print '%s non_exist' % (task1.hash)
                 log_file.write('[%s, %d, %f]%s non_exist\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash))
-        log_file.write('rule 2 end')
+        log_file.write('rule 2 end\n')
         
     log_file.close()
     
