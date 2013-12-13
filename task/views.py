@@ -14,6 +14,7 @@ import DB.db
 import operation.views
 import threading
 import datetime
+from multiprocessing import Process
 
 def day_diff(date1, date2):
     d1 = datetime.datetime(string.atoi(date1[0:4]), string.atoi(date1[5:7]), string.atoi(date1[8:10]))
@@ -867,6 +868,11 @@ class Thread_UPLOAD(threading.Thread):
     def run(self):
         for record in self.record_list:            
             self.run_record(record)
+
+            
+def do_uploads(platform, record_list):
+    for record in record_list:            
+        do_upload(platform, record)
                 
 
 class Thread_COLD(threading.Thread):
@@ -905,7 +911,16 @@ class Thread_SYNC(threading.Thread):
             result = do_sync_all(self.platform, self.record)
         else:
             result = do_sync_partial(self.platform, self.record)
-        return result        
+        return result
+           
+    
+def do_sync(platform, record): 
+    result = False       
+    if(record.memo == '~'):
+        result = do_sync_all(platform, record)
+    else:
+        result = do_sync_partial(platform, record)
+    return result
         
 
 def add_record_sync_hash_db(platform, record_list, operation1):
@@ -965,8 +980,11 @@ def sync_hash_db(request, platform):
     
     if(start_now == True):
         # start thread.
-        t = Thread_SYNC(platform, record_list[0])            
-        t.start()
+        #t = Thread_SYNC(platform, record_list[0])            
+        #t.start()
+        # start process
+        p = Process(target=do_sync, args=(platform, record_list[0]))
+        p.start()
         
     return_datas['success'] = True
     return_datas['data'] = 'sync_hash_db operation add success'
@@ -1054,8 +1072,11 @@ def upload_hits_num(request, platform):
             
     if(start_now == True):
         # start thread.
-        t = Thread_UPLOAD(platform, record_list)            
-        t.start()
+        #t = Thread_UPLOAD(platform, record_list)            
+        #t.start()
+        # start process
+        p = Process(target=do_uploads, args=(platform, record_list))
+        p.start()
         
     return_datas['success'] = True
     return_datas['data'] = 'day_num %d' % (day_num)  
@@ -1106,8 +1127,11 @@ def calc_cold(request, platform):
     
     if(start_now == True):
         # start thread.
-        t = Thread_COLD(platform, record_list[0])            
-        t.start()
+        #t = Thread_COLD(platform, record_list[0])            
+        #t.start()
+        # start process
+        p = Process(target=do_cold2, args=(platform, record_list[0]))
+        p.start()
         
     return_datas['success'] = True
     return_datas['data'] = 'calc_cold operation add success'

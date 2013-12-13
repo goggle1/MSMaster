@@ -9,6 +9,7 @@ import time
 import string
 import threading
 import datetime
+from multiprocessing import Process
 
 import DB.db
 import operation.views
@@ -660,8 +661,9 @@ def ms_do_delete_cold_tasks(platform, record):
         else:
             #print '%s non_exist' % (task1.hash)
             log_file.write('[%s, %d, %f]%s non_exist\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash))
-    log_file.write('rule 1 end\n')
-        
+    log_file.write('rule 1 end\n')       
+    print 'after rule 1, total_delete_num=%d, real_delete_num=%d' % (total_delete_num, real_delete_num) 
+    
     # rule 2:    
     if(real_delete_num < total_delete_num):
         log_file.write('rule 2 begin\n')
@@ -692,7 +694,7 @@ def ms_do_delete_cold_tasks(platform, record):
                 #print '%s non_exist' % (task1.hash)
                 log_file.write('[%s, %d, %f]%s non_exist\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash))
         log_file.write('rule 2 end\n')
-        
+        print 'after rule 2, total_delete_num=%d, real_delete_num=%d' % (total_delete_num, real_delete_num) 
     log_file.close()
     
     ms_all.do_delete()
@@ -812,8 +814,11 @@ def sync_ms_db(request, platform):
         
     if(start_now == True):
         # start thread.
-        t = Thread_SYNC_MS_DB(platform, record)            
-        t.start()
+        #t = Thread_SYNC_MS_DB(platform, record)            
+        #t.start()
+        # start process
+        p = Process(target=do_sync_ms_db, args=(platform, record))
+        p.start()
     
     return HttpResponse(json.dumps(return_datas))
 
@@ -863,8 +868,10 @@ def sync_ms_status(request, platform):
         
     if(start_now == True):
         # start thread.
-        t = Thread_SYNC_MS_STATUS(platform, record)            
-        t.start()
+        #t = Thread_SYNC_MS_STATUS(platform, record)            
+        #t.start()
+        p = Process(target=do_sync_ms_status, args=(platform, record))
+        p.start()
     
     return HttpResponse(json.dumps(return_datas))
 
@@ -918,8 +925,11 @@ def ms_add_hot_tasks(request, platform):
     
     if(start_now == True):
         # start thread.
-        t = Thread_MS_ADD_HOT_TASKS(platform, record)            
-        t.start()    
+        #t = Thread_MS_ADD_HOT_TASKS(platform, record)            
+        #t.start()   
+        # start process
+        p = Process(target=ms_do_add_hot_tasks, args=(platform, record))
+        p.start() 
     
     return_datas = {'success':True, 'data':output, "dispatch_time":dispatch_time}    
     return HttpResponse(json.dumps(return_datas)) 
@@ -974,8 +984,11 @@ def ms_delete_cold_tasks(request, platform):
     
     if(start_now == True):
         # start thread.
-        t = Thread_MS_DELETE_COLD_TASKS(platform, record)            
-        t.start()    
+        #t = Thread_MS_DELETE_COLD_TASKS(platform, record)            
+        #t.start()
+        # start process
+        p = Process(target=ms_do_delete_cold_tasks, args=(platform, record))
+        p.start()    
     
     return_datas = {'success':True, 'data':output, "dispatch_time":dispatch_time}    
     return HttpResponse(json.dumps(return_datas)) 

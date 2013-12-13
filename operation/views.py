@@ -11,6 +11,7 @@ import MS.views
 import task.views
 import room.views
 
+from multiprocessing import Process
 
 def get_operation_record(platform, v_type, v_name):
     records = []
@@ -73,7 +74,7 @@ def create_operation_record_by_dict(platform, operation):
 
 
 def get_operation_local(platform):
-    operation_list = []
+    operation_list = None
     if(platform == 'mobile'):
         operation_list = models.mobile_operation.objects.all()
     elif(platform == 'pc'):
@@ -170,10 +171,51 @@ def show_operation_list(request, platform):
     return HttpResponse(output)
 
 
+def do_operation(platform, operation):
+        result = False
+        if(operation.status == models.STATUS_DONE):
+            return True
+        if(operation.type == 'sync_hash_db'):
+            if(operation.memo == '~'):
+                result = task.views.do_sync_all(platform, operation)
+            else:
+                result = task.views.do_sync_partial(platform, operation)
+        elif(operation.type == 'upload_hits_num'):
+            result = task.views.do_upload(platform, operation)
+        elif(operation.type == 'calc_cold'):
+            result = task.views.do_cold2(platform, operation)
+        elif(operation.type == 'sync_ms_db'):
+            result = MS.views.do_sync_ms_db(platform, operation)
+        elif(operation.type == 'sync_ms_status'):
+            result = MS.views.do_sync_ms_status(platform, operation)
+        elif(operation.type == 'sync_room_db'):
+            result = room.views.do_sync_room_db(platform, operation)
+        elif(operation.type == 'sync_room_status'):
+            result = room.views.do_sync_room_status(platform, operation)
+        elif(operation.type == 'delete_cold_tasks'):
+            result = room.views.do_delete_cold_tasks(platform, operation)  
+        elif(operation.type == 'add_hot_tasks'):
+            result = room.views.do_add_hot_tasks(platform, operation)
+        elif(operation.type == 'ms_delete_cold_tasks'):
+            result = MS.views.ms_do_delete_cold_tasks(platform, operation)
+        elif(operation.type == 'ms_add_hot_tasks'):
+            result = MS.views.ms_do_add_hot_tasks(platform, operation)      
+        else:
+            print 'unknown operation type: %s' % (operation.type)
+            
+        return result
+    
+    
+def do_operation_list(platform, operation_list):
+    for operation in operation_list:
+        p = Process(target=do_operation, args=(platform, operation))
+        p.start()
+        p.join()
+        
+        
 #g_thread = None
 g_thread_mobile = None
 g_thread_pc = None
-
 class Thread_JOBS(threading.Thread):
     #platform = ''
     #operation_list = []
@@ -182,46 +224,10 @@ class Thread_JOBS(threading.Thread):
         super(Thread_JOBS, self).__init__()        
         self.platform = v_platform
         self.operation_list = operation_list
-                
-    
-    def run_operation(self, operation):
-        result = False
-        if(operation.status == models.STATUS_DONE):
-            return True
-        if(operation.type == 'sync_hash_db'):
-            if(operation.memo == '~'):
-                result = task.views.do_sync_all(self.platform, operation)
-            else:
-                result = task.views.do_sync_partial(self.platform, operation)
-        elif(operation.type == 'upload_hits_num'):
-            result = task.views.do_upload(self.platform, operation)
-        elif(operation.type == 'calc_cold'):
-            result = task.views.do_cold2(self.platform, operation)
-        elif(operation.type == 'sync_ms_db'):
-            result = MS.views.do_sync_ms_db(self.platform, operation)
-        elif(operation.type == 'sync_ms_status'):
-            result = MS.views.do_sync_ms_status(self.platform, operation)
-        elif(operation.type == 'sync_room_db'):
-            result = room.views.do_sync_room_db(self.platform, operation)
-        elif(operation.type == 'sync_room_status'):
-            result = room.views.do_sync_room_status(self.platform, operation)
-        elif(operation.type == 'delete_cold_tasks'):
-            result = room.views.do_delete_cold_tasks(self.platform, operation)  
-        elif(operation.type == 'add_hot_tasks'):
-            result = room.views.do_add_hot_tasks(self.platform, operation)
-        elif(operation.type == 'ms_delete_cold_tasks'):
-            result = MS.views.ms_do_delete_cold_tasks(self.platform, operation)
-        elif(operation.type == 'ms_add_hot_tasks'):
-            result = MS.views.ms_do_add_hot_tasks(self.platform, operation)      
-        else:
-            print 'unknown operation type: %s' % (operation.type)
-            
-        return result
-            
+               
             
     def run(self):        
-        for operation in self.operation_list:
-            self.run_operation(operation)  
+        do_operation_list(self.platform, self.operation_list)  
         #global g_thread
         global g_thread_mobile
         global g_thread_pc
@@ -229,6 +235,7 @@ class Thread_JOBS(threading.Thread):
             g_thread_mobile = None
         elif(self.platform == 'pc'):
             g_thread_pc = None
+
 
 
 def operation_type_int(v_type):
@@ -258,8 +265,7 @@ def operation_cmp(op1, op2):
         if(type1<type2):
             return -1
         else:
-            return 1
-            
+            return 1            
 
     
 def do_selected_operations(request, platform):  
@@ -287,8 +293,10 @@ def do_selected_operations(request, platform):
     if(platform == 'mobile'):
         if(g_thread_mobile == None):
             g_thread_mobile = Thread_JOBS(platform, operation_list)            
-            g_thread_mobile.start()    
-            output += 'do %s' % (ids)  
+            g_thread_mobile.start() 
+            #g_thread_mobile = Process(target=do_operation_list, args=(platform, operation_list))            
+            #g_thread_mobile.start()       
+            output += 'do '  
             for operation in operation_list:      
                 output += '%s,' % (str(operation.id))
         else:
@@ -296,12 +304,14 @@ def do_selected_operations(request, platform):
     elif(platform == 'pc'):
         if(g_thread_pc == None):
             g_thread_pc = Thread_JOBS(platform, operation_list)            
-            g_thread_pc.start()    
-            output += 'do %s' % (ids) 
+            g_thread_pc.start()
+            #g_thread_pc = Process(target=do_operation_list, args=(platform, operation_list))            
+            #g_thread_pc.start()     
+            output += 'do '  
             for operation in operation_list:      
                 output += '%s,' % (str(operation.id))
         else:
-            output += 'Thread_JOBS has started!'             
+            output += 'Thread_JOBS has started!'           
         
     return HttpResponse(output)
 
@@ -328,7 +338,9 @@ def do_all_operations(request, platform):
     if(platform == 'mobile'):
         if(g_thread_mobile == None):
             g_thread_mobile = Thread_JOBS(platform, operation_list)            
-            g_thread_mobile.start()    
+            g_thread_mobile.start() 
+            #g_thread_mobile = Process(target=do_operation_list, args=(platform, operation_list))            
+            #g_thread_mobile.start()       
             output += 'do '  
             for operation in operation_list:      
                 output += '%s,' % (str(operation.id))
@@ -337,7 +349,9 @@ def do_all_operations(request, platform):
     elif(platform == 'pc'):
         if(g_thread_pc == None):
             g_thread_pc = Thread_JOBS(platform, operation_list)            
-            g_thread_pc.start()    
+            g_thread_pc.start()
+            #g_thread_pc = Process(target=do_operation_list, args=(platform, operation_list))            
+            #g_thread_pc.start()     
             output += 'do '  
             for operation in operation_list:      
                 output += '%s,' % (str(operation.id))
@@ -345,3 +359,4 @@ def do_all_operations(request, platform):
             output += 'Thread_JOBS has started!'
             
     return HttpResponse(output)    
+

@@ -149,6 +149,7 @@ class MS_ALL:
                 sql = "SELECT dat_hash FROM fs_mobile_dat d, fs_mobile_ms_dat m WHERE d.dat_id = m.dat_id AND m.server_id=%d" % (one.db_record.server_id)
             elif(self.platform == 'pc'):
                 sql = "SELECT task_hash FROM fs_task t,fs_ms_task m WHERE t.task_id = m.task_id AND m.server_id=%d" % (one.db_record.server_id)    
+            print sql
             db.execute(sql)      
             #print type(db.cur)  
             #print type(db.cur.fetchall())
@@ -156,7 +157,8 @@ class MS_ALL:
                 col_num = 0
                 for r in row:
                     if(col_num == 0):
-                        one.task_dict[str(r)] = '1'                
+                        #print str(r)
+                        one.task_dict[str(r)] = '1'                                 
                     col_num += 1   
             print '%d, %s get tasks end, task_number=%d' % (one.db_record.server_id, one.db_record.controll_ip, len(one.task_dict)) 
         db.close()  

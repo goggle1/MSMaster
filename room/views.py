@@ -6,6 +6,7 @@ import json
 import models
 import time
 import string
+from multiprocessing import Process
 
 import DB.db
 import MS.models
@@ -496,6 +497,7 @@ def do_delete_cold_tasks(platform, record):
             #print '%s non_exist' % (task1.hash)
             log_file.write('[%s, %d, %f]%s non_exist\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash))
     log_file.write('rule 1 end\n')
+    print 'after rule 1, total_delete_num=%d, real_delete_num=%d' % (total_delete_num, real_delete_num) 
     
     print 'cold_tasks ref count0:%d' % sys.getrefcount(cold_tasks)
     del cold_tasks
@@ -533,7 +535,7 @@ def do_delete_cold_tasks(platform, record):
                 #print '%s non_exist' % (task1.hash)
                 log_file.write('[%s, %d, %f]%s non_exist\n' % (task1.online_time, task1.hot, task1.cold1, task1.hash))
         log_file.write('rule 2 end\n')
-        
+        print 'after rule 2, total_delete_num=%d, real_delete_num=%d' % (total_delete_num, real_delete_num)         
     log_file.close()
     
     ms_all.do_delete()
@@ -960,8 +962,11 @@ def sync_room_db(request, platform):
         
     if(start_now == True):
         # start thread.
-        t = Thread_SYNC_ROOM_DB(platform, record)            
-        t.start()
+        #t = Thread_SYNC_ROOM_DB(platform, record)            
+        #t.start()
+        # start process
+        p = Process(target=do_sync_room_db, args=(platform, record))
+        p.start()
     
     return HttpResponse(json.dumps(return_datas))   
 
@@ -1020,8 +1025,11 @@ def add_hot_tasks(request, platform):
     
     if(start_now == True):
         # start thread.
-        t = Thread_ADD_HOT_TASKS(platform, record)            
-        t.start()    
+        #t = Thread_ADD_HOT_TASKS(platform, record)            
+        #t.start()
+        # start process
+        p = Process(target=do_add_hot_tasks, args=(platform, record))
+        p.start()    
     
     return_datas = {'success':True, 'data':output, "dispatch_time":dispatch_time}    
     return HttpResponse(json.dumps(return_datas)) 
@@ -1080,8 +1088,11 @@ def delete_cold_tasks(request, platform):
     
     if(start_now == True):
         # start thread.
-        t = Thread_DELETE_COLD_TASKS(platform, record)            
-        t.start()    
+        #t = Thread_DELETE_COLD_TASKS(platform, record)            
+        #t.start()    
+        # start process
+        p = Process(target=do_delete_cold_tasks, args=(platform, record))
+        p.start()  
     
     return_datas = {'success':True, 'data':output, "dispatch_time":dispatch_time}    
     return HttpResponse(json.dumps(return_datas))
@@ -1134,8 +1145,11 @@ def sync_room_status(request, platform):
         
     if(start_now == True):
         # start thread.
-        t = Thread_SYNC_ROOM_STATUS(platform, record)            
-        t.start()
+        #t = Thread_SYNC_ROOM_STATUS(platform, record)            
+        #t.start()
+        # start process
+        p = Process(target=do_sync_room_status, args=(platform, record))
+        p.start()
     
     return HttpResponse(json.dumps(return_datas))    
 
