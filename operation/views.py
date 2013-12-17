@@ -12,6 +12,7 @@ import task.views
 import room.views
 
 from multiprocessing import Process
+import os
 
 def get_operation_record(platform, v_type, v_name):
     records = []
@@ -205,8 +206,8 @@ def do_operation(platform, operation):
             
         return result
     
-    
-def do_operation_list(platform, operation_list):
+
+def do_operation_list(platform, operation_list):   
     for operation in operation_list:
         p = Process(target=do_operation, args=(platform, operation))
         p.start()
@@ -303,17 +304,21 @@ def do_selected_operations(request, platform):
             output += 'Thread_JOBS has started!'
     elif(platform == 'pc'):
         if(g_thread_pc == None):
-            g_thread_pc = Thread_JOBS(platform, operation_list)            
-            g_thread_pc.start()
-            #g_thread_pc = Process(target=do_operation_list, args=(platform, operation_list))            
-            #g_thread_pc.start()     
             output += 'do '  
             for operation in operation_list:      
                 output += '%s,' % (str(operation.id))
+            print "%s begin [@%d]" % (output, os.getpid())
+            g_thread_pc = Thread_JOBS(platform, operation_list)            
+            g_thread_pc.start()
+            #g_thread_pc = Process(target=do_operation_list, args=(platform, operation_list))            
+            #g_thread_pc.start()    
         else:
             output += 'Thread_JOBS has started!'           
         
-    return HttpResponse(output)
+    print "%s end [@%d]" % (output, os.getpid())
+    response = HttpResponse(output, mimetype='text/plain')
+    response['Content-Length'] = len(output)
+    return response
 
 
 def do_all_operations(request, platform):  
@@ -358,5 +363,7 @@ def do_all_operations(request, platform):
         else:
             output += 'Thread_JOBS has started!'
             
-    return HttpResponse(output)    
+    response = HttpResponse(output, mimetype='text/plain')
+    response['Content-Length'] = len(output)
+    return response    
 

@@ -988,9 +988,12 @@ def sync_hash_db(request, platform):
         
     return_datas['success'] = True
     return_datas['data'] = 'sync_hash_db operation add success'
-    return HttpResponse(json.dumps(return_datas)) 
+    
+    str_datas = json.dumps(return_datas)
+    response = HttpResponse(str_datas, mimetype='application/json;charset=UTF-8')
+    response['Content-Length'] = len(str_datas)
+    return response
 
-  
 
 def add_record_upload_hits_num(platform, record_list, operation1):
     records = operation.views.get_operation_by_type_name(platform, operation1['type'], operation1['name'])
@@ -1080,7 +1083,11 @@ def upload_hits_num(request, platform):
         
     return_datas['success'] = True
     return_datas['data'] = 'day_num %d' % (day_num)  
-    return HttpResponse(json.dumps(return_datas))
+    
+    str_datas = json.dumps(return_datas)
+    response = HttpResponse(str_datas, mimetype='application/json;charset=UTF-8')
+    response['Content-Length'] = len(str_datas)
+    return response
         
         
 def add_record_calc_cold(platform, record_list, operation1):
@@ -1135,5 +1142,9 @@ def calc_cold(request, platform):
         
     return_datas['success'] = True
     return_datas['data'] = 'calc_cold operation add success'
-    return HttpResponse(json.dumps(return_datas)) 
+    
+    str_datas = json.dumps(return_datas)
+    response = HttpResponse(str_datas, mimetype='application/json;charset=UTF-8')
+    response['Content-Length'] = len(str_datas)
+    return response
 

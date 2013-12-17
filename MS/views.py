@@ -587,8 +587,9 @@ def ms_do_delete_cold_tasks(platform, record):
     ms_id_list = []
     fields = s_ms_ids.split(',')
     for field in fields:
-        ms_id = string.atoi(field)
-        ms_id_list.append(ms_id) 
+        if(len(field) > 0):
+            ms_id = string.atoi(field)
+            ms_id_list.append(ms_id) 
         
     ms_list = room.views.get_ms_list_in_room(platform, room_id)
     if(len(ms_list) <= 0):
@@ -820,7 +821,10 @@ def sync_ms_db(request, platform):
         p = Process(target=do_sync_ms_db, args=(platform, record))
         p.start()
     
-    return HttpResponse(json.dumps(return_datas))
+    str_datas = json.dumps(return_datas)
+    response = HttpResponse(str_datas, mimetype='application/json;charset=UTF-8')
+    response['Content-Length'] = len(str_datas)
+    return response
 
 
 def sync_ms_status(request, platform):  
@@ -873,7 +877,10 @@ def sync_ms_status(request, platform):
         p = Process(target=do_sync_ms_status, args=(platform, record))
         p.start()
     
-    return HttpResponse(json.dumps(return_datas))
+    str_datas = json.dumps(return_datas)
+    response = HttpResponse(str_datas, mimetype='application/json;charset=UTF-8')
+    response['Content-Length'] = len(str_datas)
+    return response
 
 
 def ms_add_hot_tasks(request, platform):
@@ -931,8 +938,12 @@ def ms_add_hot_tasks(request, platform):
         p = Process(target=ms_do_add_hot_tasks, args=(platform, record))
         p.start() 
     
-    return_datas = {'success':True, 'data':output, "dispatch_time":dispatch_time}    
-    return HttpResponse(json.dumps(return_datas)) 
+    return_datas = {'success':True, 'data':output, "dispatch_time":dispatch_time}  
+    
+    str_datas = json.dumps(return_datas)
+    response = HttpResponse(str_datas, mimetype='application/json;charset=UTF-8')
+    response['Content-Length'] = len(str_datas)
+    return response  
 
 
 def ms_delete_cold_tasks(request, platform):
@@ -981,6 +992,8 @@ def ms_delete_cold_tasks(request, platform):
         return HttpResponse(json.dumps(return_datas)) 
     
     output += 'operation add, id=%d, type=%s, name=%s, dispatch_time=%s, status=%d' % (record.id, record.type, record.name, record.dispatch_time, record.status)    
+    return_datas = {'success':True, 'data':output, "dispatch_time":dispatch_time}    
+    print json.dumps(return_datas)
     
     if(start_now == True):
         # start thread.
@@ -989,6 +1002,8 @@ def ms_delete_cold_tasks(request, platform):
         # start process
         p = Process(target=ms_do_delete_cold_tasks, args=(platform, record))
         p.start()    
-    
-    return_datas = {'success':True, 'data':output, "dispatch_time":dispatch_time}    
-    return HttpResponse(json.dumps(return_datas)) 
+     
+    str_datas = json.dumps(return_datas)
+    response = HttpResponse(str_datas, mimetype='application/json;charset=UTF-8')
+    response['Content-Length'] = len(str_datas)
+    return response  

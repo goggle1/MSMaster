@@ -626,8 +626,10 @@ def sync_room_db(request, platform):
         p = Process(target=do_sync_room_db, args=(platform, record))
         p.start()
     
-    return HttpResponse(json.dumps(return_datas))   
-
+    str_datas = json.dumps(return_datas)
+    response = HttpResponse(str_datas, mimetype='application/json;charset=UTF-8')
+    response['Content-Length'] = len(str_datas)
+    return response
 
 
 def add_hot_tasks(request, platform):
@@ -689,8 +691,12 @@ def add_hot_tasks(request, platform):
         p = Process(target=do_add_hot_tasks, args=(platform, record))
         p.start()    
     
-    return_datas = {'success':True, 'data':output, "dispatch_time":dispatch_time}    
-    return HttpResponse(json.dumps(return_datas)) 
+    return_datas = {'success':True, 'data':output, "dispatch_time":dispatch_time}   
+    
+    str_datas = json.dumps(return_datas)
+    response = HttpResponse(str_datas, mimetype='application/json;charset=UTF-8')
+    response['Content-Length'] = len(str_datas)
+    return response
 
 
 def delete_cold_tasks(request, platform):
@@ -753,8 +759,11 @@ def delete_cold_tasks(request, platform):
         p.start()  
     
     return_datas = {'success':True, 'data':output, "dispatch_time":dispatch_time}    
-    return HttpResponse(json.dumps(return_datas))
-
+    
+    str_datas = json.dumps(return_datas)
+    response = HttpResponse(str_datas, mimetype='application/json;charset=UTF-8')
+    response['Content-Length'] = len(str_datas)
+    return response
 
 
 def sync_room_status(request, platform):  
@@ -809,8 +818,10 @@ def sync_room_status(request, platform):
         p = Process(target=do_sync_room_status, args=(platform, record))
         p.start()
     
-    return HttpResponse(json.dumps(return_datas))    
-
+    str_datas = json.dumps(return_datas)
+    response = HttpResponse(str_datas, mimetype='application/json;charset=UTF-8')
+    response['Content-Length'] = len(str_datas)
+    return response
 
     
     
