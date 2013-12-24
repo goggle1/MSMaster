@@ -228,9 +228,8 @@ def show_ms_list(request, platform):
     for ip in ip_list:
         title = '<h1>ip: %s</h1>' % (ip)
         output += title  
-        try:
-            #req = urllib2.Request('http://%s:11000/ms/check?detail=2'%(ip))
-            req = urllib2.Request('http://%s:11000/ms/check?detail=2'%('124.254.47.122'))
+        try:            
+            req = urllib2.Request('http://%s:11000/ms/?cmd=check&detail=2'%(ip))
             response = urllib2.urlopen(req)
             the_page = response.read()
             output += the_page
@@ -300,9 +299,8 @@ def get_ms_status(ms_local):
     
     ms_local.server_status1 = 0
     try:
-        # get status    
-        #req = urllib2.Request('http://%s:11000/ms/check?detail=0'%(ip))
-        req = urllib2.Request('http://%s:11000/ms/check?detail=0'%('124.254.47.122'))
+        # get status        
+        req = urllib2.Request('http://%s:11000/ms/?cmd=check&detail=0'%(ms_local.controll_ip))
         response = urllib2.urlopen(req, timeout=10)
         output = response.read()
         num_error = 0
